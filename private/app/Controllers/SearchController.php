@@ -44,8 +44,8 @@ class SearchController extends Controller
         // Construct the final query
         $finalQuery = trim($query . ' ' . $siteFilter);
 
-        // Perform Google Custom Search
-        $result = $this->googleCustomSearch($finalQuery);
+        // Perform Search using Serper.dev
+        $result = $this->serperSearch($finalQuery);
         
         // Handle API errors gracefully
         if (isset($result['error'])) {
@@ -55,38 +55,36 @@ class SearchController extends Controller
         Response::success($result);
     }
 
-    private function googleCustomSearch(string $query): array
+    private function serperSearch(string $query): array
     {
         $settingModel = new Setting();
-        $apiKey = $settingModel->get('google_search_api_key');
-        $cx = $settingModel->get('google_search_cx');
+        $apiKey = $settingModel->get('serper_api_key');
 
-        // Fallback to constants if DB settings are empty (backward compatibility)
-        if (empty($apiKey) && defined('GOOGLE_API_KEY')) {
-            $apiKey = GOOGLE_API_KEY;
-        }
-        if (empty($cx) && defined('GOOGLE_SEARCH_CX')) {
-            $cx = GOOGLE_SEARCH_CX;
-        }
-
-        if (empty($apiKey) || empty($cx) || $apiKey === 'YOUR_GOOGLE_API_KEY_HERE') {
+        if (empty($apiKey)) {
             return [
-                'error' => 'Google Custom Search API is not configured. Please set google_search_api_key and google_search_cx in settings.',
+                'error' => 'Serper.dev API is not configured. Please set serper_api_key in settings.',
                 'items' => [],
                 'status_code' => 503
             ];
         }
 
-        $url = 'https://www.googleapis.com/customsearch/v1?' . http_build_query([
-            'key' => $apiKey,
-            'cx' => $cx,
-            'q' => $query
-        ]);
+        $url = 'https://google.serper.dev/search';
+        
+        $data = [
+            'q' => $query,
+            'gl' => 'cm' // Cameroon
+        ];
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // For local dev
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'X-API-KEY: ' . $apiKey,
+            'Content-Type: application/json'
+        ]);
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -94,7 +92,7 @@ class SearchController extends Controller
 
         if ($httpCode !== 200) {
             return [
-                'error' => 'Google API request failed',
+                'error' => 'Serper API request failed',
                 'status_code' => $httpCode,
                 'response' => json_decode($response, true)
             ];
@@ -102,22 +100,24 @@ class SearchController extends Controller
 
         $data = json_decode($response, true);
 
-        // Simplify results for the frontend
+        // Simplify results for the frontend (Serper format -> ColiXpress format)
         $items = [];
-        if (isset($data['items'])) {
-            foreach ($data['items'] as $item) {
+        
+        // Handle organic results
+        if (isset($data['organic'])) {
+            foreach ($data['organic'] as $item) {
                 $items[] = [
                     'title' => $item['title'] ?? '',
                     'link' => $item['link'] ?? '',
                     'snippet' => $item['snippet'] ?? '',
-                    'thumbnail' => $item['pagemap']['cse_thumbnail'][0]['src'] ?? null
+                    'thumbnail' => null // Serper organic results usually don't have thumbnails in the main list
                 ];
             }
         }
 
         return [
             'query' => $query,
-            'total_results' => $data['searchInformation']['totalResults'] ?? 0,
+            'total_results' => count($items), // Serper doesn't always give total results count
             'items' => $items
         ];
     }
