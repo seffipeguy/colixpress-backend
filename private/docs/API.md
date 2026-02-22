@@ -1963,19 +1963,19 @@ Uploader une image pour une bannière.
 
 ## 16. Maps — Proxy Cache Google Maps / Serper
 
-Proxy serveur pour les appels Google Maps (ou Serper.dev) avec cache automatique. Réduit drastiquement la consommation de l'API Google Maps.
+Proxy serveur pour les appels de localisation (autocomplete, geocoding) avec cache automatique.
 
-> **Principe** : L'app mobile appelle votre API au lieu de Google directement. Le serveur met en cache les résultats et les réutilise pour les requêtes identiques. Si `serper_api_key` est configuré, l'autocomplete utilise Serper.dev (plus économique et rapide).
+> **Note importante** : L'autocomplete utilise désormais **exclusivement** Serper.dev. Une clé API Serper doit être configurée.
 
 ### `GET /api/maps/autocomplete` 🔒 Authentifié
 
-Suggestions d'adresses (autocomplete).
+Suggestions d'adresses (autocomplete) via Serper.dev.
 
 **Query params :**
 - `input` *(requis)* — Texte de recherche (min 2 caractères)
-- `country` — Code ISO pays (ex: `CM`)
-- `location` — Position GPS de l'utilisateur (ex: `4.0511,9.7679`). Active le tri par proximité (Google uniquement)
-- `radius` — Rayon de recherche en mètres (défaut: `50000`)
+- `country` — Code ISO pays (ex: `CM`). Défaut: `CM`
+- `location` — *(Ignoré par Serper)*
+- `radius` — *(Ignoré par Serper)*
 
 **Réponse (200) :**
 ```json
@@ -2000,18 +2000,26 @@ Suggestions d'adresses (autocomplete).
 }
 ```
 
+**Erreur si clé Serper manquante (500) :**
+```json
+{
+  "success": false,
+  "message": "Serper API Key is missing in settings."
+}
+```
+
 **Champs de la réponse :**
 
 | Champ | Description |
 |-------|-------------|
-| `place_id` | Identifiant Google ou Serper ID (pour appeler `/api/maps/place-details`) |
+| `place_id` | Identifiant Serper ID (contient les données encodées) |
 | `description` | Adresse complète |
 | `main_text` | Nom principal du lieu |
 | `secondary_text` | Contexte (ville, pays) |
 | `types` | Types de lieu |
-| `latitude` / `longitude` | Coordonnées GPS (disponible immédiatement avec Serper) |
+| `latitude` / `longitude` | Coordonnées GPS (disponible immédiatement) |
 
-> Le champ `source` indique `"google"`, `"serper"` ou `"cache"`.
+> Le champ `source` indique `"serper"` ou `"cache"`.
 
 ---
 

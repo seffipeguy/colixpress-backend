@@ -21,20 +21,22 @@ class GoogleMapsService
     }
 
     /**
-     * Autocomplete — Suggestions d'adresses (Via Serper.dev)
+     * Autocomplete — Suggestions d'adresses (Via Serper.dev uniquement)
      */
     public function autocomplete(string $input, ?string $country = null, ?string $location = null, ?int $radius = null): array
     {
-        // Si Serper API Key est configurée, on l'utilise en priorité
-        if (!empty($this->serperApiKey)) {
-            return $this->autocompleteSerper($input, $country);
+        // Si Serper API Key n'est pas configurée, erreur explicite
+        if (empty($this->serperApiKey)) {
+            return ['source' => 'server', 'results' => [], 'error' => 'Serper API Key is missing in settings.'];
         }
 
-        // Sinon fallback sur Google Maps
+        // Clé de cache (on inclut "serper" dans la clé pour éviter les conflits avec l'ancien cache google si besoin, 
+        // ou on garde le même format si on veut migrer transparentement, mais ici les structures de données sont un peu différentes)
+        // Le format de buildKey est (type, query, extra_params).
+        // On va garder 'autocomplete' comme type pour rester cohérent.
         $extra = array_filter([
             'country'  => $country,
-            'location' => $location,
-            'radius'   => $radius,
+            'provider' => 'serper' // Différencier du cache Google
         ]);
         $cacheKey = GeoCache::buildKey('autocomplete', $input, $extra);
 
@@ -44,51 +46,14 @@ class GoogleMapsService
             return ['source' => 'cache', 'results' => $cached];
         }
 
-        // Appel Google
-        $params = [
-            'input'    => $input,
-            'key'      => $this->apiKey,
-            'language' => 'fr',
-        ];
-        if ($country) {
-            $params['components'] = 'country:' . $country;
-        }
-        if ($location) {
-            $params['location'] = $location;
-            $params['radius'] = $radius ?? 50000;
-            $params['strictbounds'] = false;
-            $params['origin'] = $location;
-        }
-
-        $response = $this->callGoogle('/place/autocomplete/json', $params);
-
-        if ($response && ($response['status'] === 'OK' || $response['status'] === 'ZERO_RESULTS')) {
-            $results = array_map(function ($p) {
-                $item = [
-                    'place_id'          => $p['place_id'],
-                    'description'       => $p['description'],
-                    'main_text'         => $p['structured_formatting']['main_text'] ?? '',
-                    'secondary_text'    => $p['structured_formatting']['secondary_text'] ?? '',
-                    'types'             => $p['types'] ?? [],
-                    'matched_substrings' => $p['structured_formatting']['main_text_matched_substrings'] ?? [],
-                ];
-                if (isset($p['distance_meters'])) {
-                    $item['distance_meters'] = $p['distance_meters'];
-                }
-                return $item;
-            }, $response['predictions'] ?? []);
-
-            $this->cache->store('autocomplete', $cacheKey, $input, $results);
-            return ['source' => 'google', 'results' => $results];
-        }
-
-        return ['source' => 'google', 'results' => [], 'error' => $response['status'] ?? 'UNKNOWN_ERROR'];
+        // Appel Serper
+        return $this->autocompleteSerper($input, $country, $cacheKey);
     }
 
     /**
      * Autocomplete via Serper.dev
      */
-    private function autocompleteSerper(string $input, ?string $country = null): array
+    private function autocompleteSerper(string $input, ?string $country = null, string $cacheKey): array
     {
         $params = [
             'q'  => $input,
@@ -133,8 +98,13 @@ class GoogleMapsService
                 'secondary_text'     => $p['address'] ?? '',
                 'types'              => isset($p['category']) ? [$p['category']] : [],
                 'matched_substrings' => [],
+                'latitude'           => $p['latitude'] ?? null,
+                'longitude'          => $p['longitude'] ?? null,
             ];
         }, $places);
+
+        // Mise en cache
+        $this->cache->store('autocomplete', $cacheKey, $input, $results);
 
         return ['source' => 'serper', 'results' => $results];
     }
