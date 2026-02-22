@@ -9,6 +9,7 @@ class GoogleMapsService
 {
     private string $apiKey;
     private string $serperApiKey;
+    private string $defaultCountry;
     private GeoCache $cache;
     private const BASE_URL = 'https://maps.googleapis.com/maps/api';
 
@@ -17,6 +18,7 @@ class GoogleMapsService
         $setting = new Setting();
         $this->apiKey = $setting->get('google_maps_server_key') ?? '';
         $this->serperApiKey = $setting->get('serper_api_key') ?? '';
+        $this->defaultCountry = $setting->get('default_country') ?? 'cm';
         $this->cache = new GeoCache();
     }
 
@@ -55,9 +57,11 @@ class GoogleMapsService
      */
     private function autocompleteSerper(string $input, ?string $country = null, string $cacheKey): array
     {
+        $targetCountry = $country ? strtolower($country) : $this->defaultCountry;
+        
         $params = [
             'q'  => $input,
-            'gl' => $country ? strtolower($country) : 'cm', // Par défaut Cameroun si non spécifié
+            'gl' => $targetCountry, // Pays cible
             'hl' => 'fr' // Langue française
         ];
 
