@@ -548,7 +548,7 @@ Supprimer une adresse.
 
 Créer une commande de livraison.
 
-> **Note :** La création de commande accepte désormais des données incomplètes. Les champs obligatoires peuvent être omis lors de la création et complétés plus tard via `PUT /api/orders/{id}`.
+> **Note :** La création de commande accepte désormais des données incomplètes. Les champs obligatoires peuvent être omis lors de la création et complétés plus tard via `PUT /api/orders/{reference}`.
 
 #### Type `direct` — Livraison point à point
 
@@ -2363,7 +2363,7 @@ Annuler une commande.
 
 ---
 
-#### `GET /api/v1/orders/{id}/tracking` 🔑
+#### `GET /api/v1/orders/{reference}/tracking` 🔑
 
 Suivre la position GPS du livreur.
 
@@ -2447,11 +2447,11 @@ Règles de tarification actives.
 | 22 | GET | `/api/orders/estimate` | 🔒 | — |
 | 23 | GET | `/api/orders/frequent-places` | 🔒 | — |
 | 24 | GET | `/api/orders/frequent-shops` | 🔒 | — |
-| 25 | GET | `/api/orders/{id}` | 🔒 | — |
-| 26 | PUT | `/api/orders/{id}/accept` | 🔒 | livreur |
-| 27 | PUT | `/api/orders/{id}/status` | 🔒 | livreur |
-| 28 | PUT | `/api/orders/{id}/cancel` | 🔒 | client |
-| 29 | GET | `/api/orders/{id}/tracking` | 🔒 | — |
+| 25 | GET | `/api/orders/{reference}` | 🔒 | — |
+| 26 | PUT | `/api/orders/{reference}/accept` | 🔒 | livreur |
+| 27 | PUT | `/api/orders/{reference}/status` | 🔒 | livreur |
+| 28 | PUT | `/api/orders/{reference}/cancel` | 🔒 | client |
+| 29 | GET | `/api/orders/{reference}/tracking` | 🔒 | — |
 | 30 | POST | `/api/orders/{order_id}/rating` | 🔒 | client |
 | 31 | GET | `/api/shops` | 🟢 | — |
 | 32 | GET | `/api/shops/popular` | 🟢 | — |
@@ -2527,7 +2527,7 @@ Règles de tarification actives.
 | 93 | GET | `/api/v1/orders` | Lister ses commandes |
 | 94 | GET | `/api/v1/orders/{id}` | Détail commande |
 | 95 | GET | `/api/v1/orders/by-reference/{ref}` | Chercher par ref externe |
-| 96 | PUT | `/api/v1/orders/{id}/cancel` | Annuler |
+| 96 | PUT | `/api/v1/orders/{reference}/cancel` | Annuler |
 | 97 | GET | `/api/v1/orders/{id}/tracking` | Tracking GPS |
 | 98 | GET | `/api/v1/estimate` | Estimation prix |
 | 99 | GET | `/api/v1/shops` | Liste boutiques |

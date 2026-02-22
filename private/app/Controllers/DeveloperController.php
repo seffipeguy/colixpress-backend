@@ -279,12 +279,12 @@ class DeveloperController extends Controller
     }
 
     /**
-     * GET /api/v1/orders/{id}
+     * GET /api/v1/orders/{reference}
      */
     public function showOrder(Request $request): void
     {
         $orderModel = new Order();
-        $order = $orderModel->findWithDetails((int) $request->param('id'));
+        $order = $orderModel->findWithDetailsByReference($request->param('reference'));
 
         if (!$order || (int) ($order['api_key_id'] ?? 0) !== ApiAuth::apiKeyId()) {
             Response::notFound('Order not found');
@@ -328,12 +328,12 @@ class DeveloperController extends Controller
     }
 
     /**
-     * PUT /api/v1/orders/{id}/cancel
+     * PUT /api/v1/orders/{reference}/cancel
      */
     public function cancelOrder(Request $request): void
     {
         $orderModel = new Order();
-        $order = $orderModel->find((int) $request->param('id'));
+        $order = $orderModel->findByReference($request->param('reference'));
 
         if (!$order || (int) ($order['api_key_id'] ?? 0) !== ApiAuth::apiKeyId()) {
             Response::notFound('Order not found');
@@ -352,12 +352,12 @@ class DeveloperController extends Controller
     }
 
     /**
-     * GET /api/v1/orders/{id}/tracking
+     * GET /api/v1/orders/{reference}/tracking
      */
     public function trackOrder(Request $request): void
     {
         $orderModel = new Order();
-        $order = $orderModel->find((int) $request->param('id'));
+        $order = $orderModel->findByReference($request->param('reference'));
 
         if (!$order || (int) ($order['api_key_id'] ?? 0) !== ApiAuth::apiKeyId()) {
             Response::notFound('Order not found');

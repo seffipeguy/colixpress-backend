@@ -10,8 +10,33 @@ class ShopCategory extends Model
 
     public function getActive(): array
     {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE is_active = 1 ORDER BY sort_order ASC");
+        // Get all active categories
+        $stmt = $this->db->prepare("
+            SELECT * FROM {$this->table} 
+            WHERE is_active = 1 
+            ORDER BY sort_order ASC, name ASC
+        ");
         $stmt->execute();
-        return $stmt->fetchAll();
+        $all = $stmt->fetchAll();
+
+        // Build hierarchy tree
+        return $this->buildTree($all);
+    }
+
+    private function buildTree(array $elements, ?int $parentId = null): array
+    {
+        $branch = [];
+
+        foreach ($elements as $element) {
+            if ($element['parent_id'] == $parentId) {
+                $children = $this->buildTree($elements, $element['id']);
+                if ($children) {
+                    $element['children'] = $children;
+                }
+                $branch[] = $element;
+            }
+        }
+
+        return $branch;
     }
 }

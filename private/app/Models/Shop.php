@@ -11,48 +11,112 @@ class Shop extends Model
 
     public function getApproved(int $page, int $perPage, ?int $categoryId = null, ?string $city = null): array
     {
-        $where = 'is_active = 1 AND is_approved = 1';
+        $where = 's.is_active = 1 AND s.is_approved = 1';
         $params = [];
 
+        // Join with shop_category_map if category filter is applied
+        $join = '';
         if ($categoryId) {
-            $where .= ' AND category_id = :cat';
+            $join = 'JOIN shop_category_map scm ON scm.shop_id = s.id';
+            $where .= ' AND scm.category_id = :cat';
             $params['cat'] = $categoryId;
         }
+
         if ($city) {
-            $where .= ' AND city = :city';
+            $where .= ' AND s.city = :city';
             $params['city'] = $city;
         }
 
-        return $this->paginate($page, $perPage, $where, $params, 'name ASC');
+        // Custom pagination query for joined tables
+        $offset = ($page - 1) * $perPage;
+        
+        $sql = "SELECT DISTINCT s.* 
+                FROM {$this->table} s 
+                {$join}
+                WHERE {$where} 
+                ORDER BY s.name ASC 
+                LIMIT :limit OFFSET :offset";
+        
+        $countSql = "SELECT COUNT(DISTINCT s.id) 
+                     FROM {$this->table} s 
+                     {$join}
+                     WHERE {$where}";
+
+        // Get total
+        $stmtCount = $this->db->prepare($countSql);
+        foreach ($params as $key => $value) {
+            $stmtCount->bindValue($key, $value);
+        }
+        $stmtCount->execute();
+        $total = $stmtCount->fetchColumn();
+
+        // Get data
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue('limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue('offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $data = $stmt->fetchAll();
+
+        // Enrich with categories and tags
+        foreach ($data as &$shop) {
+            $shop['categories'] = $this->getCategoriesForShop($shop['id']);
+            $shop['tags'] = $this->getTagsForShop($shop['id']);
+            $shop['permissions'] = json_decode($shop['permissions'] ?? '[]', true);
+        }
+
+        return [
+            'data' => $data,
+            'total' => (int) $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'last_page' => ceil($total / $perPage)
+        ];
     }
 
     public function findWithDetails(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT s.*, sc.name AS category_name, c.dial_code
+            SELECT s.*, c.dial_code
             FROM {$this->table} s
-            LEFT JOIN shop_categories sc ON sc.id = s.category_id
             LEFT JOIN countries c ON c.id = s.country_id
             WHERE s.id = :id
             LIMIT 1
         ");
         $stmt->execute(['id' => $id]);
-        $result = $stmt->fetch();
-        return $result ?: null;
+        $shop = $stmt->fetch();
+
+        if ($shop) {
+            $shop['categories'] = $this->getCategoriesForShop($shop['id']);
+            $shop['tags'] = $this->getTagsForShop($shop['id']);
+            $shop['permissions'] = json_decode($shop['permissions'] ?? '[]', true);
+        }
+
+        return $shop ?: null;
     }
 
     public function getByOwner(int $ownerId): array
     {
-        return $this->where('owner_id', $ownerId);
+        $shops = $this->where('owner_id', $ownerId);
+        foreach ($shops as &$shop) {
+            $shop['categories'] = $this->getCategoriesForShop($shop['id']);
+            $shop['tags'] = $this->getTagsForShop($shop['id']);
+            $shop['permissions'] = json_decode($shop['permissions'] ?? '[]', true);
+        }
+        return $shops;
     }
 
     public function getPopular(int $limit = 10, ?int $categoryId = null, ?string $city = null): array
     {
         $where = 's.is_active = 1 AND s.is_approved = 1';
         $params = [];
+        $join = '';
 
         if ($categoryId) {
-            $where .= ' AND s.category_id = :cat';
+            $join = 'JOIN shop_category_map scm ON scm.shop_id = s.id';
+            $where .= ' AND scm.category_id = :cat';
             $params['cat'] = $categoryId;
         }
         if ($city) {
@@ -61,21 +125,19 @@ class Shop extends Model
         }
 
         $sql = "
-            SELECT s.id, s.name, s.address, s.city, s.latitude, s.longitude,
+            SELECT s.id, s.name, s.short_description, s.website_url, s.address, s.city, s.latitude, s.longitude,
                    s.phone, s.logo, s.cover_photo,
-                   sc.name AS category_name,
                    COUNT(o.id) AS total_orders,
                    COUNT(DISTINCT o.client_id) AS unique_clients,
                    COALESCE(AVG(r.score), 0) AS avg_rating,
                    COUNT(DISTINCT r.id) AS total_ratings
             FROM {$this->table} s
+            {$join}
             LEFT JOIN orders o ON o.shop_id = s.id AND o.status != 'cancelled'
-            LEFT JOIN shop_categories sc ON sc.id = s.category_id
             LEFT JOIN ratings r ON r.rated_user = s.owner_id
             WHERE {$where}
-            GROUP BY s.id, s.name, s.address, s.city, s.latitude, s.longitude,
-                     s.phone, s.logo, s.cover_photo, sc.name
-            HAVING total_orders > 0
+            GROUP BY s.id, s.name, s.short_description, s.website_url, s.address, s.city, s.latitude, s.longitude,
+                     s.phone, s.logo, s.cover_photo
             ORDER BY total_orders DESC, avg_rating DESC
             LIMIT :lim
         ";
@@ -86,6 +148,69 @@ class Shop extends Model
         }
         $stmt->bindValue('lim', $limit, PDO::PARAM_INT);
         $stmt->execute();
+        $shops = $stmt->fetchAll();
+
+        foreach ($shops as &$shop) {
+            $shop['categories'] = $this->getCategoriesForShop($shop['id']);
+            $shop['tags'] = $this->getTagsForShop($shop['id']);
+        }
+
+        return $shops;
+    }
+
+    // --- Helpers for Many-to-Many ---
+
+    public function getCategoriesForShop(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT sc.* 
+            FROM shop_categories sc
+            JOIN shop_category_map scm ON scm.category_id = sc.id
+            WHERE scm.shop_id = :sid
+            ORDER BY sc.name ASC
+        ");
+        $stmt->execute(['sid' => $shopId]);
         return $stmt->fetchAll();
+    }
+
+    public function getTagsForShop(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT t.* 
+            FROM shop_tags t
+            JOIN shop_tag_map tm ON tm.tag_id = t.id
+            WHERE tm.shop_id = :sid
+            ORDER BY t.name ASC
+        ");
+        $stmt->execute(['sid' => $shopId]);
+        return $stmt->fetchAll();
+    }
+
+    public function attachCategories(int $shopId, array $categoryIds): void
+    {
+        $this->db->prepare("DELETE FROM shop_category_map WHERE shop_id = ?")->execute([$shopId]);
+        
+        $stmt = $this->db->prepare("INSERT INTO shop_category_map (shop_id, category_id) VALUES (?, ?)");
+        foreach ($categoryIds as $catId) {
+            try {
+                $stmt->execute([$shopId, $catId]);
+            } catch (\PDOException $e) {
+                // Ignore duplicates or invalid ids
+            }
+        }
+    }
+
+    public function attachTags(int $shopId, array $tagIds): void
+    {
+        $this->db->prepare("DELETE FROM shop_tag_map WHERE shop_id = ?")->execute([$shopId]);
+        
+        $stmt = $this->db->prepare("INSERT INTO shop_tag_map (shop_id, tag_id) VALUES (?, ?)");
+        foreach ($tagIds as $tagId) {
+            try {
+                $stmt->execute([$shopId, $tagId]);
+            } catch (\PDOException $e) {
+                // Ignore
+            }
+        }
     }
 }

@@ -33,10 +33,10 @@ $router->post('/api/auth/login', App\Controllers\AuthController::class, 'login')
 $router->get('/api/shops', App\Controllers\ShopController::class, 'index');
 $router->get('/api/shops/popular', App\Controllers\ShopController::class, 'popular');
 $router->get('/api/shops/{id}', App\Controllers\ShopController::class, 'show');
-$router->get('/api/shops/{shop_id}/items', App\Controllers\ShopItemController::class, 'index');
 
-// Shop categories
+// Shop categories & tags
 $router->get('/api/shop-categories', App\Controllers\ShopController::class, 'categories');
+$router->get('/api/shop-tags', App\Controllers\ShopController::class, 'tags');
 
 // Pricing info (public)
 $router->get('/api/pricing', App\Controllers\PricingController::class, 'index');
@@ -110,11 +110,6 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/shops/my', App\Controllers\ShopController::class, 'myShops');
     $router->put('/api/shops/{id}/approve', App\Controllers\ShopController::class, 'approve');
 
-    // --- Shop Items (owner management) ---
-    $router->post('/api/shops/{shop_id}/items', App\Controllers\ShopItemController::class, 'store');
-    $router->put('/api/shops/{shop_id}/items/{id}', App\Controllers\ShopItemController::class, 'update');
-    $router->delete('/api/shops/{shop_id}/items/{id}', App\Controllers\ShopItemController::class, 'destroy');
-
     // --- Livreur ---
     $router->post('/api/livreur/register', App\Controllers\LivreurController::class, 'register');
     $router->get('/api/livreur/profile', App\Controllers\LivreurController::class, 'profile');
@@ -184,10 +179,10 @@ $router->group('', [ApiAuth::class], function ($router) {
     // --- Orders ---
     $router->post('/api/v1/orders', App\Controllers\DeveloperController::class, 'createOrder');
     $router->get('/api/v1/orders', App\Controllers\DeveloperController::class, 'listOrders');
-    $router->get('/api/v1/orders/{id}', App\Controllers\DeveloperController::class, 'showOrder');
+    $router->get('/api/v1/orders/{reference}', App\Controllers\DeveloperController::class, 'showOrder');
     $router->get('/api/v1/orders/by-reference/{reference}', App\Controllers\DeveloperController::class, 'showOrderByReference');
-    $router->put('/api/v1/orders/{id}/cancel', App\Controllers\DeveloperController::class, 'cancelOrder');
-    $router->get('/api/v1/orders/{id}/tracking', App\Controllers\DeveloperController::class, 'trackOrder');
+    $router->put('/api/v1/orders/{reference}/cancel', App\Controllers\DeveloperController::class, 'cancelOrder');
+    $router->get('/api/v1/orders/{reference}/tracking', App\Controllers\DeveloperController::class, 'trackOrder');
 
     // --- Estimate ---
     $router->get('/api/v1/estimate', App\Controllers\DeveloperController::class, 'estimate');
