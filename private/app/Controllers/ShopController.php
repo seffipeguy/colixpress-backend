@@ -23,7 +23,8 @@ class ShopController extends Controller
             $request->page(),
             $request->perPage(),
             $request->query('category_id') ? (int) $request->query('category_id') : null,
-            $request->query('city')
+            $request->query('city'),
+            $request->query('q')
         );
         Response::paginated($result['data'], $result['total'], $request->page(), $request->perPage());
     }
@@ -42,12 +43,13 @@ class ShopController extends Controller
         }
 
         $radius = (float) $request->query('radius', 50); // Default 50km
+        $categoryId = $request->query('category_id') ? (int) $request->query('category_id') : null;
         $page = $request->page();
         $perPage = $request->perPage();
         $offset = ($page - 1) * $perPage;
 
         $model = new Shop();
-        $shops = $model->getNearby((float) $lat, (float) $lng, $radius, $perPage, $offset);
+        $shops = $model->getNearby((float) $lat, (float) $lng, $radius, $perPage, $offset, $categoryId);
 
         Response::success($shops);
     }

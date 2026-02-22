@@ -9,7 +9,7 @@ class Shop extends Model
 {
     protected string $table = 'shops';
 
-    public function getApproved(int $page, int $perPage, ?int $categoryId = null, ?string $city = null): array
+    public function getApproved(int $page, int $perPage, ?int $categoryId = null, ?string $city = null, ?string $search = null): array
     {
         $where = 's.is_active = 1 AND s.is_approved = 1';
         $params = [];
@@ -25,6 +25,13 @@ class Shop extends Model
         if ($city) {
             $where .= ' AND s.city = :city';
             $params['city'] = $city;
+        }
+
+        if ($search) {
+            $where .= ' AND (s.name LIKE :search_name OR s.description LIKE :search_desc OR s.address LIKE :search_addr)';
+            $params['search_name'] = '%' . $search . '%';
+            $params['search_desc'] = '%' . $search . '%';
+            $params['search_addr'] = '%' . $search . '%';
         }
 
         // Custom pagination query for joined tables
@@ -158,9 +165,24 @@ class Shop extends Model
         return $shops;
     }
 
-    public function getNearby(float $lat, float $lng, float $radiusKm, int $limit = 20, int $offset = 0): array
+    public function getNearby(float $lat, float $lng, float $radiusKm, int $limit = 20, int $offset = 0, ?int $categoryId = null): array
     {
-        $sql = "SELECT s.*, 
+        $where = 's.is_active = 1 AND s.is_approved = 1 AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL';
+        $join = '';
+        $params = [
+            'lat1' => $lat,
+            'lat2' => $lat,
+            'lng' => $lng,
+            'radius' => $radiusKm
+        ];
+
+        if ($categoryId) {
+            $join = 'JOIN shop_category_map scm ON scm.shop_id = s.id';
+            $where .= ' AND scm.category_id = :cat';
+            $params['cat'] = $categoryId;
+        }
+
+        $sql = "SELECT DISTINCT s.*, 
                 (
                     6371 * acos(
                         cos(radians(:lat1)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) +
@@ -168,17 +190,16 @@ class Shop extends Model
                     )
                 ) AS distance_km
                 FROM {$this->table} s
-                WHERE s.is_active = 1 AND s.is_approved = 1 
-                  AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL
+                {$join}
+                WHERE {$where}
                 HAVING distance_km <= :radius
                 ORDER BY distance_km ASC
                 LIMIT :limit OFFSET :offset";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bindValue('lat1', $lat);
-        $stmt->bindValue('lat2', $lat);
-        $stmt->bindValue('lng', $lng);
-        $stmt->bindValue('radius', $radiusKm);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
         $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue('offset', $offset, PDO::PARAM_INT);
         $stmt->execute();

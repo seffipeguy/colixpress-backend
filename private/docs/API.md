@@ -973,9 +973,10 @@ Suivre la position GPS du livreur pour une commande.
 
 ### `GET /api/shops` 🟢 Public
 
-Parcourir les boutiques approuvées.
+Parcourir et rechercher les boutiques approuvées.
 
 **Query params :**
+- `q` — Recherche par nom, description ou adresse
 - `category_id` — Filtrer par catégorie
 - `city` — Filtrer par ville
 - `page`, `per_page`
@@ -1022,6 +1023,7 @@ Rechercher les boutiques à proximité d'une position GPS, triées par distance 
 | `lat` | float | ✅ | Latitude |
 | `lng` | float | ✅ | Longitude |
 | `radius` | int | ❌ | Rayon de recherche en km (défaut : 50) |
+| `category_id` | int | ❌ | Filtrer par catégorie |
 | `page` | int | ❌ | Pagination |
 | `per_page` | int | ❌ | Nombre par page |
 
