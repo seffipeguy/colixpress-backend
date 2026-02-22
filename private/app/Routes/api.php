@@ -52,6 +52,7 @@ $router->get('/api/settings/app-version', App\Controllers\SettingsController::cl
 
 // Banners / News (public, with optional auth for role targeting)
 $router->get('/api/banners', App\Controllers\BannerController::class, 'index');
+$router->get('/api/tracking/{reference}', App\Controllers\OrderController::class, 'publicTracking');
 $router->put('/api/orders/{reference}', App\Controllers\OrderController::class, 'update');
 
 

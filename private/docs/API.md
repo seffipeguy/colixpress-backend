@@ -811,6 +811,44 @@ Utiliser la **référence** de la commande (ex: `ORD-12345-AB`) et non l'ID num�
 
 ---
 
+### `GET /api/tracking/{reference}` 🟢 Public
+
+Suivre une commande publiquement (sans authentification).
+Retourne les informations essentielles (statut, adresses, livreur assigné et historique).
+
+**Réponse (200) :**
+```json
+{
+  "success": true,
+  "data": {
+    "reference": "ORD-123456",
+    "status": "in_progress",
+    "created_at": "2023-10-27 10:00:00",
+    "pickup_address": "Akwa, Douala",
+    "dropoff_address": "Bonanjo, Douala",
+    "livreur": {
+      "first_name": "Jean",
+      "phone": "+237699999999",
+      "current_lat": 4.051056,
+      "current_lng": 9.767868,
+      "last_location_at": "2023-10-27 10:30:00"
+    },
+    "history": [
+      {
+        "status": "pending",
+        "changed_at": "2023-10-27 10:00:00"
+      },
+      {
+        "status": "accepted",
+        "changed_at": "2023-10-27 10:05:00"
+      }
+    ]
+  }
+}
+```
+
+---
+
 ### `PUT /api/orders/{reference}` 🟢 Public
 
 Mettre à jour les informations d'une commande existante.

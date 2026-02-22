@@ -16,7 +16,55 @@ use App\Models\Shop;
 class OrderController extends Controller
 {
     /**
+     * GET /api/tracking/{reference}
+     * Public order tracking
+     */
+    public function publicTracking(Request $request): void
+    {
+        $reference = $request->param('reference');
+        $orderModel = new Order();
+        $order = $orderModel->findByReference($reference);
+
+        if (!$order) {
+            Response::notFound('Order not found');
+        }
+
+        // Filter sensitive data for public view
+        $publicData = [
+            'reference' => $order['reference'],
+            'status' => $order['status'],
+            'created_at' => $order['created_at'],
+            'pickup_address' => $order['pickup_address'], // Maybe hide exact address?
+            'dropoff_address' => $order['dropoff_address'],
+            'livreur' => null,
+            'history' => []
+        ];
+
+        // Add livreur info if assigned (only name and phone)
+        if ($order['livreur_id']) {
+            $livreurModel = new LivreurProfile();
+            $livreur = $livreurModel->findWithDetails($order['livreur_id']);
+            if ($livreur) {
+                $publicData['livreur'] = [
+                    'first_name' => $livreur['first_name'],
+                    'phone' => $livreur['phone'], // Useful for coordination
+                    'current_lat' => $livreur['current_lat'],
+                    'current_lng' => $livreur['current_lng'],
+                    'last_location_at' => $livreur['last_location_at']
+                ];
+            }
+        }
+
+        // Add status history
+        $historyModel = new OrderStatusHistory();
+        $publicData['history'] = $historyModel->getForOrder($order['id']);
+
+        Response::success($publicData);
+    }
+
+    /**
      * POST /api/orders
+
      * Direct delivery: { "pickup_address", "pickup_lat", "pickup_lng", "dropoff_address", ... "distance_km", "package_description", "package_size" }
      * Shop order: { "order_type": "shop", "shop_id": 1, "dropoff_address", ... "items": [{"shop_item_id": 1, "quantity": 2}] }
      */
