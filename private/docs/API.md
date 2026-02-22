@@ -798,20 +798,24 @@ Boutiques où l'utilisateur commande le plus souvent. Utile pour afficher une se
 
 ---
 
-### `GET /api/orders/{id}` 🔒
+### `GET /api/orders/{reference}` 🔒
 
 Détail d'une commande (inclut `status_history` et `items` pour les commandes shop).
+Utiliser la **référence** de la commande (ex: `ORD-12345-AB`) et non l'ID numérique.
 
 > Accès : client de la commande, livreur assigné, ou admin.
 
 ---
 
-### `PUT /api/orders/{id}` 🟢 Public
+### `PUT /api/orders/{reference}` 🟢 Public
 
 Mettre à jour les informations d'une commande existante.
 
 > **Accès :** Public (aucune authentification requise).
 > **Condition :** La commande doit être au statut `pending`. Le prix est automatiquement recalculé si les adresses ou les informations du colis changent.
+
+**Paramètre URL :**
+- `reference` : La référence unique de la commande (ex: `ORD-12345-AB`).
 
 **Body :**
 Tous les champs sont optionnels (voir `POST /api/orders` pour la liste complète).
@@ -832,7 +836,7 @@ Retourne l'objet commande mis à jour.
 
 ---
 
-### `PUT /api/orders/{id}/accept` 🔒 Livreur
+### `PUT /api/orders/{reference}/accept` 🔒 Livreur
 
 Le livreur accepte une commande.
 
@@ -842,7 +846,7 @@ Le livreur accepte une commande.
 
 ---
 
-### `PUT /api/orders/{id}/status` 🔒 Livreur
+### `PUT /api/orders/{reference}/status` 🔒 Livreur
 
 Mettre à jour le statut de la commande.
 
@@ -869,7 +873,7 @@ accepted → picking_up → picked_up → in_transit → delivered
 
 ---
 
-### `PUT /api/orders/{id}/cancel` 🔒 Client
+### `PUT /api/orders/{reference}/cancel` 🔒 Client
 
 Annuler une commande.
 
@@ -884,7 +888,7 @@ Annuler une commande.
 
 ---
 
-### `GET /api/orders/{id}/tracking` 🔒
+### `GET /api/orders/{reference}/tracking` 🔒
 
 Suivre la position GPS du livreur pour une commande.
 

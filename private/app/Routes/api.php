@@ -49,7 +49,7 @@ $router->get('/api/settings/app-version', App\Controllers\SettingsController::cl
 
 // Banners / News (public, with optional auth for role targeting)
 $router->get('/api/banners', App\Controllers\BannerController::class, 'index');
-$router->put('/api/orders/{id}', App\Controllers\OrderController::class, 'update');
+$router->put('/api/orders/{reference}', App\Controllers\OrderController::class, 'update');
 
 
 // =============================================
@@ -94,15 +94,15 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/orders/estimate', App\Controllers\OrderController::class, 'estimate');
     $router->get('/api/orders/frequent-places', App\Controllers\OrderController::class, 'frequentPlaces');
     $router->get('/api/orders/frequent-shops', App\Controllers\OrderController::class, 'frequentShops');
-    $router->get('/api/orders/{id}', App\Controllers\OrderController::class, 'show');
+    $router->get('/api/orders/{reference}', App\Controllers\OrderController::class, 'show');
     // $router->put('/api/orders/{id}', App\Controllers\OrderController::class, 'update'); // Moved to public
-    $router->put('/api/orders/{id}/accept', App\Controllers\OrderController::class, 'accept');
-    $router->put('/api/orders/{id}/status', App\Controllers\OrderController::class, 'updateStatus');
-    $router->put('/api/orders/{id}/cancel', App\Controllers\OrderController::class, 'cancel');
-    $router->get('/api/orders/{id}/tracking', App\Controllers\OrderController::class, 'tracking');
+    $router->put('/api/orders/{reference}/accept', App\Controllers\OrderController::class, 'accept');
+    $router->put('/api/orders/{reference}/status', App\Controllers\OrderController::class, 'updateStatus');
+    $router->put('/api/orders/{reference}/cancel', App\Controllers\OrderController::class, 'cancel');
+    $router->get('/api/orders/{reference}/tracking', App\Controllers\OrderController::class, 'tracking');
 
     // --- Order Ratings ---
-    $router->post('/api/orders/{order_id}/rating', App\Controllers\RatingController::class, 'store');
+    $router->post('/api/orders/{reference}/rating', App\Controllers\RatingController::class, 'store');
 
     // --- Shops (owner management) ---
     $router->post('/api/shops', App\Controllers\ShopController::class, 'store');

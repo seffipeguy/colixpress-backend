@@ -11,14 +11,14 @@ use App\Models\Order;
 class RatingController extends Controller
 {
     /**
-     * POST /api/orders/{order_id}/rating
+     * POST /api/orders/{reference}/rating
      * Body: { "score": 5, "comment": "Excellent livreur!" }
      */
     public function store(Request $request): void
     {
         $request->validate(['score']);
 
-        $orderId = (int) $request->param('order_id');
+        $reference = $request->param('reference');
         $score = (int) $request->input('score');
 
         if ($score < 1 || $score > 5) {
@@ -27,11 +27,13 @@ class RatingController extends Controller
 
         // Verify order exists and is delivered
         $orderModel = new Order();
-        $order = $orderModel->find($orderId);
+        $order = $orderModel->findByReference($reference);
 
         if (!$order) {
             Response::notFound('Order not found');
         }
+
+        $orderId = (int) $order['id'];
 
         if ($order['status'] !== 'delivered') {
             Response::error('Can only rate delivered orders', 422);

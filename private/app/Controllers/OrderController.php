@@ -167,12 +167,12 @@ class OrderController extends Controller
     }
 
     /**
-     * GET /api/orders/{id}
+     * GET /api/orders/{reference}
      */
     public function show(Request $request): void
     {
         $orderModel = new Order();
-        $order = $orderModel->findWithDetails((int) $request->param('id'));
+        $order = $orderModel->findWithDetailsByReference($request->param('reference'));
 
         if (!$order) {
             Response::notFound('Order not found');
@@ -199,13 +199,13 @@ class OrderController extends Controller
     }
 
     /**
-     * PUT /api/orders/{id}
+     * PUT /api/orders/{reference}
      * Update order details (only if pending)
      */
     public function update(Request $request): void
     {
         $orderModel = new Order();
-        $order = $orderModel->find((int) $request->param('id'));
+        $order = $orderModel->findByReference($request->param('reference'));
 
         if (!$order) {
             Response::notFound('Order not found');
@@ -287,14 +287,14 @@ class OrderController extends Controller
     }
 
     /**
-     * PUT /api/orders/{id}/accept — Livreur accepts the order
+     * PUT /api/orders/{reference}/accept — Livreur accepts the order
      */
     public function accept(Request $request): void
     {
         $this->requireRole('livreur', 'admin');
 
         $orderModel = new Order();
-        $order = $orderModel->find((int) $request->param('id'));
+        $order = $orderModel->findByReference($request->param('reference'));
 
         if (!$order) {
             Response::notFound('Order not found');
@@ -312,14 +312,14 @@ class OrderController extends Controller
             'Livreur assigned',
             'A delivery driver has been assigned to your order ' . $order['reference'],
             'order_update',
-            ['order_id' => (int) $order['id']]
+            ['order_id' => (int) $order['id'], 'order_reference' => $order['reference']]
         );
 
         Response::success($orderModel->findWithDetails((int) $order['id']), 'Order accepted');
     }
 
     /**
-     * PUT /api/orders/{id}/status
+     * PUT /api/orders/{reference}/status
      * Body: { "status": "picking_up|picked_up|in_transit|delivered", "comment": "..." }
      */
     public function updateStatus(Request $request): void
@@ -327,7 +327,7 @@ class OrderController extends Controller
         $request->validate(['status']);
 
         $orderModel = new Order();
-        $order = $orderModel->find((int) $request->param('id'));
+        $order = $orderModel->findByReference($request->param('reference'));
 
         if (!$order) {
             Response::notFound('Order not found');
@@ -377,19 +377,19 @@ class OrderController extends Controller
             'Order update',
             "Your order {$order['reference']} is now: {$newStatus}",
             'order_update',
-            ['order_id' => (int) $order['id'], 'status' => $newStatus]
+            ['order_id' => (int) $order['id'], 'order_reference' => $order['reference'], 'status' => $newStatus]
         );
 
         Response::success($orderModel->findWithDetails((int) $order['id']), 'Status updated');
     }
 
     /**
-     * PUT /api/orders/{id}/cancel — Client cancels order
+     * PUT /api/orders/{reference}/cancel — Client cancels order
      */
     public function cancel(Request $request): void
     {
         $orderModel = new Order();
-        $order = $orderModel->find((int) $request->param('id'));
+        $order = $orderModel->findByReference($request->param('reference'));
 
         if (!$order) {
             Response::notFound('Order not found');
@@ -415,7 +415,7 @@ class OrderController extends Controller
                 'Order cancelled',
                 "Order {$order['reference']} has been cancelled by the client",
                 'order_update',
-                ['order_id' => (int) $order['id']]
+                ['order_id' => (int) $order['id'], 'order_reference' => $order['reference']]
             );
         }
 
@@ -423,12 +423,12 @@ class OrderController extends Controller
     }
 
     /**
-     * GET /api/orders/{id}/tracking — Get livreur GPS trail for an order
+     * GET /api/orders/{reference}/tracking — Get livreur GPS trail for an order
      */
     public function tracking(Request $request): void
     {
         $orderModel = new Order();
-        $order = $orderModel->find((int) $request->param('id'));
+        $order = $orderModel->findByReference($request->param('reference'));
 
         if (!$order) {
             Response::notFound('Order not found');

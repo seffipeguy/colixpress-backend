@@ -68,6 +68,16 @@ class Order extends Model
 
     public function findWithDetails(int $id): ?array
     {
+        return $this->findWithDetailsBy('o.id', $id);
+    }
+
+    public function findWithDetailsByReference(string $reference): ?array
+    {
+        return $this->findWithDetailsBy('o.reference', $reference);
+    }
+
+    private function findWithDetailsBy(string $field, mixed $value): ?array
+    {
         $stmt = $this->db->prepare("
             SELECT o.*,
                    uc.first_name AS client_first_name, uc.last_name AS client_last_name, uc.phone AS client_phone,
@@ -77,10 +87,10 @@ class Order extends Model
             JOIN users uc ON uc.id = o.client_id
             LEFT JOIN users ul ON ul.id = o.livreur_id
             LEFT JOIN shops s ON s.id = o.shop_id
-            WHERE o.id = :id
+            WHERE {$field} = :val
             LIMIT 1
         ");
-        $stmt->execute(['id' => $id]);
+        $stmt->execute(['val' => $value]);
         $result = $stmt->fetch();
         return $result ?: null;
     }
