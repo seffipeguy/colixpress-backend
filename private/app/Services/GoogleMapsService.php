@@ -57,7 +57,8 @@ class GoogleMapsService
     {
         $params = [
             'q'  => $input,
-            'gl' => $country ? strtolower($country) : 'cm' // Par défaut Cameroun si non spécifié
+            'gl' => $country ? strtolower($country) : 'cm', // Par défaut Cameroun si non spécifié
+            'hl' => 'fr' // Langue française
         ];
 
         $ch = curl_init();
