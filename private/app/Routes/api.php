@@ -45,6 +45,7 @@ $router->get('/api/pricing/{city}', App\Controllers\PricingController::class, 's
 // Public app settings (non-sensitive)
 $router->get('/api/settings/public', App\Controllers\SettingsController::class, 'publicSettings');
 $router->get('/api/settings/maps-pricing', App\Controllers\SettingsController::class, 'mapsPricing');
+$router->get('/api/settings/app-version', App\Controllers\SettingsController::class, 'appVersion');
 
 // Banners / News (public, with optional auth for role targeting)
 $router->get('/api/banners', App\Controllers\BannerController::class, 'index');

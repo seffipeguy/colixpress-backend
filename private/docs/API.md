@@ -999,6 +999,43 @@ Classement global des boutiques les plus commandées sur la plateforme. Idéal p
 
 ---
 
+## 8. Configuration App
+
+### `GET /api/settings/app-version` 🟢 Public
+
+Vérifier la version de l'application et les mises à jour requises.
+
+**Réponse (200) :**
+```json
+{
+  "success": true,
+  "data": {
+    "android": {
+      "latest_version": "1.2.0",
+      "min_version": "1.1.0",
+      "url": "https://play.google.com/store/apps/details?id=com.colixpress",
+      "deadline": "2026-03-01"
+    },
+    "ios": {
+      "latest_version": "1.0.5",
+      "min_version": "1.0.0",
+      "url": "https://apps.apple.com/app/id123456789",
+      "deadline": null
+    },
+    "message": "Une nouvelle version est disponible."
+  }
+}
+```
+
+> **Logique Client suggérée :**
+> 1. Si `current_version` < `min_version` → **Blocage** (Mise à jour obligatoire).
+> 2. Si `current_version` < `latest_version` ET `today` > `deadline` → **Blocage** (Mise à jour obligatoire).
+> 3. Si `current_version` < `latest_version` → **Soft Update** (Popup fermable).
+
+---
+
+---
+
 ### `POST /api/shops` 🔒 Shop Owner / Admin
 
 Créer une boutique.

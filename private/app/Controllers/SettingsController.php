@@ -175,4 +175,31 @@ class SettingsController extends Controller
             'currency'       => 'XAF',
         ]);
     }
+
+    /**
+     * GET /api/settings/app-version
+     * Check app version status
+     */
+    public function appVersion(Request $request): void
+    {
+        $model = new Setting();
+        
+        $data = [
+            'android' => [
+                'latest_version' => $model->get('android_latest_version', '1.0.0'),
+                'min_version'    => $model->get('android_min_version', '1.0.0'),
+                'url'            => $model->get('android_store_url', ''),
+                'deadline'       => $model->get('android_update_deadline', null),
+            ],
+            'ios' => [
+                'latest_version' => $model->get('ios_latest_version', '1.0.0'),
+                'min_version'    => $model->get('ios_min_version', '1.0.0'),
+                'url'            => $model->get('ios_store_url', ''),
+                'deadline'       => $model->get('ios_update_deadline', null),
+            ],
+            'message' => $model->get('app_update_message', 'Une nouvelle version est disponible.'),
+        ];
+
+        Response::success($data);
+    }
 }
