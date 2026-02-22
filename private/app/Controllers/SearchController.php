@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
+use App\Models\Setting;
 use App\Models\Shop;
 
 class SearchController extends Controller
@@ -38,12 +39,6 @@ class SearchController extends Controller
             } else {
                 Response::error('This shop does not have a website URL configured', 400);
             }
-        } else {
-            // Option: If no shop_id, we could potentially search across all shops if we had a list, 
-            // but Google Custom Search has limits on query length. 
-            // For now, we'll assume the user wants a general search or the CX is configured for specific sites.
-            // Or we could fetch all shop URLs and construct a massive OR query (risky).
-            // Let's stick to simple query or let the user provide 'site:...' in q if they want.
         }
 
         // Construct the final query
@@ -62,12 +57,21 @@ class SearchController extends Controller
 
     private function googleCustomSearch(string $query): array
     {
-        $apiKey = defined('GOOGLE_API_KEY') ? GOOGLE_API_KEY : '';
-        $cx = defined('GOOGLE_SEARCH_CX') ? GOOGLE_SEARCH_CX : '';
+        $settingModel = new Setting();
+        $apiKey = $settingModel->get('google_search_api_key');
+        $cx = $settingModel->get('google_search_cx');
+
+        // Fallback to constants if DB settings are empty (backward compatibility)
+        if (empty($apiKey) && defined('GOOGLE_API_KEY')) {
+            $apiKey = GOOGLE_API_KEY;
+        }
+        if (empty($cx) && defined('GOOGLE_SEARCH_CX')) {
+            $cx = GOOGLE_SEARCH_CX;
+        }
 
         if (empty($apiKey) || empty($cx) || $apiKey === 'YOUR_GOOGLE_API_KEY_HERE') {
             return [
-                'error' => 'Google Custom Search API is not configured. Please set GOOGLE_API_KEY and GOOGLE_SEARCH_CX in App.php',
+                'error' => 'Google Custom Search API is not configured. Please set google_search_api_key and google_search_cx in settings.',
                 'items' => [],
                 'status_code' => 503
             ];

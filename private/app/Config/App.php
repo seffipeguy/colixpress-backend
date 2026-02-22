@@ -27,6 +27,3 @@ define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); // 5MB
 define('DEFAULT_PER_PAGE', 20);
 define('MAX_PER_PAGE', 100);
 
-// Google Custom Search API
-define('GOOGLE_API_KEY', 'YOUR_GOOGLE_API_KEY_HERE'); // Remplacez par votre clé
-define('GOOGLE_SEARCH_CX', 'YOUR_GOOGLE_SEARCH_CX_HERE'); // Remplacez par votre ID de moteur de recherche
