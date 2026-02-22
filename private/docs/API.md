@@ -548,6 +548,8 @@ Supprimer une adresse.
 
 Créer une commande de livraison.
 
+> **Note :** La création de commande accepte désormais des données incomplètes. Les champs obligatoires peuvent être omis lors de la création et complétés plus tard via `PUT /api/orders/{id}`.
+
 #### Type `direct` — Livraison point à point
 
 **Body :**
@@ -592,12 +594,12 @@ Créer une commande de livraison.
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `order_type` | string | ❌ | `direct` (défaut) ou `shop` |
-| `pickup_address` | string | ✅ direct | Adresse d'enlèvement |
+| `pickup_address` | string | ❌ | Adresse d'enlèvement (optionnel à la création) |
 | `pickup_lat` | float | ❌ | Latitude enlèvement |
 | `pickup_lng` | float | ❌ | Longitude enlèvement |
 | `pickup_contact_name` | string | ❌ | Nom du contact enlèvement |
 | `pickup_contact_phone` | string | ❌ | Téléphone contact enlèvement |
-| `dropoff_address` | string | ✅ | Adresse de livraison |
+| `dropoff_address` | string | ❌ | Adresse de livraison (optionnel à la création) |
 | `dropoff_lat` | float | ❌ | Latitude livraison |
 | `dropoff_lng` | float | ❌ | Longitude livraison |
 | `dropoff_contact_name` | string | ❌ | Nom du destinataire |
@@ -633,6 +635,30 @@ Créer une commande de livraison.
     "dropoff_address": "Bonaberi, Douala",
     "...": "..."
   }
+}
+```
+
+**Corps de la requête (Exemple minimal sans adresse) :**
+```json
+{
+  "package_description": "Un colis à livrer plus tard"
+}
+```
+
+**Réponse (201) :**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 124,
+    "reference": "CMD-20260222-WXYZ",
+    "status": "pending",
+    "pickup_address": null,
+    "dropoff_address": null,
+    "price": 1000,
+    "created_at": "2026-02-22 12:05:00"
+  },
+  "message": "Order created"
 }
 ```
 
@@ -777,6 +803,31 @@ Boutiques où l'utilisateur commande le plus souvent. Utile pour afficher une se
 Détail d'une commande (inclut `status_history` et `items` pour les commandes shop).
 
 > Accès : client de la commande, livreur assigné, ou admin.
+
+---
+
+### `PUT /api/orders/{id}`
+
+Mettre à jour les informations d'une commande existante.
+
+> **Accès :** Public (aucune authentification requise).
+> **Condition :** La commande doit être au statut `pending`. Le prix est automatiquement recalculé si les adresses ou les informations du colis changent.
+
+**Body :**
+Tous les champs sont optionnels.
+```json
+{
+  "pickup_address": "Bali, Douala",
+  "pickup_lat": 4.0450,
+  "pickup_lng": 9.7000,
+  "dropoff_address": "Bonanjo, Douala",
+  "notes": "Changement d'adresse de livraison",
+  "package_size": "moyen"
+}
+```
+
+**Réponse (200) :**
+Retourne l'objet commande mis à jour.
 
 ---
 

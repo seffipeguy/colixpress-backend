@@ -22,7 +22,7 @@ class OrderController extends Controller
      */
     public function store(Request $request): void
     {
-        $request->validate(['dropoff_address']);
+        // $request->validate(['dropoff_address']); // Disabled to allow incomplete orders
 
         $orderModel = new Order();
         $orderType = $request->input('order_type', 'direct');
@@ -60,7 +60,7 @@ class OrderController extends Controller
             $data['pickup_contact_phone'] = $shop['phone'];
         } else {
             // Direct delivery
-            $request->validate(['pickup_address']);
+            // $request->validate(['pickup_address']); // Disabled to allow incomplete orders
             $data['pickup_address']       = $request->input('pickup_address');
             $data['pickup_lat']           = $request->input('pickup_lat');
             $data['pickup_lng']           = $request->input('pickup_lng');
@@ -196,6 +196,94 @@ class OrderController extends Controller
         }
 
         Response::success($order);
+    }
+
+    /**
+     * PUT /api/orders/{id}
+     * Update order details (only if pending)
+     */
+    public function update(Request $request): void
+    {
+        $orderModel = new Order();
+        $order = $orderModel->find((int) $request->param('id'));
+
+        if (!$order) {
+            Response::notFound('Order not found');
+        }
+
+        // Authorization
+        // if (!Auth::isAdmin() && (int) $order['client_id'] !== $this->userId()) {
+        //     Response::forbidden();
+        // }
+
+        if ($order['status'] !== 'pending') {
+            Response::error('Order cannot be updated (current status: ' . $order['status'] . ')', 422);
+        }
+
+        $data = [];
+        $fields = [
+            'pickup_address', 'pickup_lat', 'pickup_lng', 'pickup_contact_name', 'pickup_contact_phone',
+            'dropoff_address', 'dropoff_lat', 'dropoff_lng', 'dropoff_contact_name', 'dropoff_contact_phone',
+            'package_description', 'package_size', 'package_weight_kg', 'package_value',
+            'notes', 'pickup_scheduled_at', 'scheduled_at', 'payment_method'
+        ];
+
+        foreach ($fields as $field) {
+            if ($request->has($field)) {
+                $data[$field] = $request->input($field);
+            }
+        }
+
+        if (empty($data)) {
+            Response::success($order, 'No changes made');
+        }
+
+        // Recalculate price if location or package info changes
+        $recalcPrice = false;
+        $priceFields = ['pickup_lat', 'pickup_lng', 'dropoff_lat', 'dropoff_lng', 'package_size', 'package_weight_kg', 'package_value'];
+        foreach ($priceFields as $field) {
+            if (isset($data[$field])) {
+                $recalcPrice = true;
+                break;
+            }
+        }
+
+        if ($recalcPrice) {
+            // Merge existing data with new data for calculation
+            $merged = array_merge($order, $data);
+            
+            $distanceKm = (float) $request->input('distance_km', 0);
+            if ($distanceKm <= 0 && 
+                !empty($merged['pickup_lat']) && !empty($merged['pickup_lng']) && 
+                !empty($merged['dropoff_lat']) && !empty($merged['dropoff_lng'])
+            ) {
+                $distanceKm = $this->haversineDistance(
+                    (float) $merged['pickup_lat'], (float) $merged['pickup_lng'],
+                    (float) $merged['dropoff_lat'], (float) $merged['dropoff_lng']
+                );
+            }
+            
+            $data['distance_km'] = round($distanceKm, 2);
+            
+            // Calculate Maps API cost if provided in update
+            $mapsUsage = $request->input('maps_usage', []);
+            if (!empty($mapsUsage)) {
+                $data['maps_api_cost'] = $this->calculateMapsApiCost($mapsUsage);
+            }
+
+            $priceResult = $orderModel->calculatePrice(
+                $distanceKm, 'Douala',
+                $merged['package_size'] ?? null,
+                isset($merged['package_weight_kg']) ? (float) $merged['package_weight_kg'] : null,
+                (int) ($merged['package_value'] ?? 0)
+            );
+            
+            $data['price'] = $priceResult['price'] + ($data['maps_api_cost'] ?? $order['maps_api_cost']);
+        }
+
+        $orderModel->update((int) $order['id'], $data);
+        
+        Response::success($orderModel->findWithDetails((int) $order['id']), 'Order updated');
     }
 
     /**
