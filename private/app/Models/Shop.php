@@ -158,6 +158,43 @@ class Shop extends Model
         return $shops;
     }
 
+    public function getNearby(float $lat, float $lng, float $radiusKm, int $limit = 20, int $offset = 0): array
+    {
+        $sql = "SELECT s.*, 
+                (
+                    6371 * acos(
+                        cos(radians(:lat1)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) +
+                        sin(radians(:lat2)) * sin(radians(s.latitude))
+                    )
+                ) AS distance_km
+                FROM {$this->table} s
+                WHERE s.is_active = 1 AND s.is_approved = 1 
+                  AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL
+                HAVING distance_km <= :radius
+                ORDER BY distance_km ASC
+                LIMIT :limit OFFSET :offset";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue('lat1', $lat);
+        $stmt->bindValue('lat2', $lat);
+        $stmt->bindValue('lng', $lng);
+        $stmt->bindValue('radius', $radiusKm);
+        $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue('offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $shops = $stmt->fetchAll();
+
+        foreach ($shops as &$shop) {
+             $shop['categories'] = $this->getCategoriesForShop($shop['id']);
+             $shop['tags'] = $this->getTagsForShop($shop['id']);
+             $shop['permissions'] = json_decode($shop['permissions'] ?? '[]', true);
+             $shop['distance_km'] = round((float) $shop['distance_km'], 2);
+        }
+
+        return $shops;
+    }
+
     // --- Helpers for Many-to-Many ---
 
     public function getCategoriesForShop(int $shopId): array

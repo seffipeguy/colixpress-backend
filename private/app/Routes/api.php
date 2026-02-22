@@ -32,6 +32,7 @@ $router->post('/api/auth/login', App\Controllers\AuthController::class, 'login')
 // Public shop browsing
 $router->get('/api/shops', App\Controllers\ShopController::class, 'index');
 $router->get('/api/shops/popular', App\Controllers\ShopController::class, 'popular');
+$router->get('/api/shops/nearby', App\Controllers\ShopController::class, 'nearby');
 $router->get('/api/shops/{id}', App\Controllers\ShopController::class, 'show');
 
 // Shop categories & tags

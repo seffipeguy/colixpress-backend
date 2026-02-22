@@ -29,6 +29,30 @@ class ShopController extends Controller
     }
 
     /**
+     * GET /api/shops/nearby
+     * Query: ?lat=4.05&lng=9.70&radius=50
+     */
+    public function nearby(Request $request): void
+    {
+        $lat = $request->query('lat');
+        $lng = $request->query('lng');
+
+        if ($lat === null || $lng === null) {
+            Response::error('Latitude (lat) and Longitude (lng) are required', 400);
+        }
+
+        $radius = (float) $request->query('radius', 50); // Default 50km
+        $page = $request->page();
+        $perPage = $request->perPage();
+        $offset = ($page - 1) * $perPage;
+
+        $model = new Shop();
+        $shops = $model->getNearby((float) $lat, (float) $lng, $radius, $perPage, $offset);
+
+        Response::success($shops);
+    }
+
+    /**
      * GET /api/shops/popular
      * Query: ?limit=10&category_id=1&city=Douala
      */

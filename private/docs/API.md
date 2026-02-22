@@ -1011,6 +1011,45 @@ Liste des catégories de boutiques.
 
 ---
 
+### `GET /api/shops/nearby` 🟢 Public
+
+Rechercher les boutiques à proximité d'une position GPS, triées par distance (du plus proche au plus loin).
+
+**Query params :**
+
+| Param | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `lat` | float | ✅ | Latitude |
+| `lng` | float | ✅ | Longitude |
+| `radius` | int | ❌ | Rayon de recherche en km (défaut : 50) |
+| `page` | int | ❌ | Pagination |
+| `per_page` | int | ❌ | Nombre par page |
+
+**Réponse (200) :**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Le Biniou",
+      "address": "Akwa, Douala",
+      "latitude": 4.0435,
+      "longitude": 9.6940,
+      "distance_km": 0.5,
+      "categories": [...]
+    },
+    {
+      "id": 2,
+      "name": "Supermarché X",
+      "distance_km": 1.2
+    }
+  ]
+}
+```
+
+---
+
 ### `GET /api/shops/popular` 🟢 Public
 
 Classement global des boutiques les plus commandées sur la plateforme. Idéal pour la page d'accueil ("Boutiques populaires").
