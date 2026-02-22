@@ -213,4 +213,11 @@ class Shop extends Model
             }
         }
     }
+
+    public function getAllShopUrls(): array
+    {
+        $stmt = $this->db->prepare("SELECT website_url FROM {$this->table} WHERE is_active = 1 AND is_approved = 1 AND website_url IS NOT NULL AND website_url != ''");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

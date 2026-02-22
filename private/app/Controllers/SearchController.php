@@ -39,6 +39,16 @@ class SearchController extends Controller
             } else {
                 Response::error('This shop does not have a website URL configured', 400);
             }
+        } else {
+            // No shop_id provided: Search across ALL active/approved shops
+            $shopModel = new Shop();
+            $urls = $shopModel->getAllShopUrls();
+
+            if (!empty($urls)) {
+                // Construct query: site:url1 OR site:url2 OR ...
+                $sites = array_map(fn($url) => 'site:' . $url, $urls);
+                $siteFilter = implode(' OR ', $sites);
+            }
         }
 
         // Construct the final query
