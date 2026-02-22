@@ -814,33 +814,45 @@ Utiliser la **référence** de la commande (ex: `ORD-12345-AB`) et non l'ID num�
 ### `GET /api/tracking/{reference}` 🟢 Public
 
 Suivre une commande publiquement (sans authentification).
-Retourne les informations essentielles (statut, adresses, livreur assigné et historique).
+Retourne **toutes** les informations de la commande (détails, articles, historique, livreur, position GPS).
 
 **Réponse (200) :**
 ```json
 {
   "success": true,
   "data": {
+    "id": 123,
     "reference": "ORD-123456",
     "status": "in_progress",
     "created_at": "2023-10-27 10:00:00",
     "pickup_address": "Akwa, Douala",
+    "pickup_lat": 4.0500,
+    "pickup_lng": 9.7000,
     "dropoff_address": "Bonanjo, Douala",
-    "livreur": {
-      "first_name": "Jean",
-      "phone": "+237699999999",
+    "dropoff_lat": 4.0400,
+    "dropoff_lng": 9.6900,
+    "price": 1500,
+    "client_first_name": "Alice",
+    "client_phone": "+237600000000",
+    "livreur_first_name": "Jean",
+    "livreur_phone": "+237699999999",
+    "livreur_location": {
       "current_lat": 4.051056,
       "current_lng": 9.767868,
       "last_location_at": "2023-10-27 10:30:00"
     },
-    "history": [
+    "shop_name": "Super Boutique",
+    "items": [
+      {
+        "item_name": "Pizza",
+        "quantity": 2,
+        "total_price": 5000
+      }
+    ],
+    "status_history": [
       {
         "status": "pending",
-        "changed_at": "2023-10-27 10:00:00"
-      },
-      {
-        "status": "accepted",
-        "changed_at": "2023-10-27 10:05:00"
+        "created_at": "2023-10-27 10:00:00"
       }
     ]
   }

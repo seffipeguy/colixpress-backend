@@ -23,43 +23,42 @@ class OrderController extends Controller
     {
         $reference = $request->param('reference');
         $orderModel = new Order();
-        $order = $orderModel->findByReference($reference);
+        $order = $orderModel->findWithDetailsByReference($reference);
 
         if (!$order) {
             Response::notFound('Order not found');
         }
 
-        // Filter sensitive data for public view
-        $publicData = [
-            'reference' => $order['reference'],
-            'status' => $order['status'],
-            'created_at' => $order['created_at'],
-            'pickup_address' => $order['pickup_address'], // Maybe hide exact address?
-            'dropoff_address' => $order['dropoff_address'],
-            'livreur' => null,
-            'history' => []
-        ];
+        // Get items if any
+        $orderItemModel = new OrderItem();
+        $order['items'] = $orderItemModel->getByOrder($order['id']);
 
-        // Add livreur info if assigned (only name and phone)
-        if ($order['livreur_id']) {
+        // Get livreur location
+        if (!empty($order['livreur_id'])) {
             $livreurModel = new LivreurProfile();
-            $livreur = $livreurModel->findWithDetails($order['livreur_id']);
-            if ($livreur) {
-                $publicData['livreur'] = [
-                    'first_name' => $livreur['first_name'],
-                    'phone' => $livreur['phone'], // Useful for coordination
-                    'current_lat' => $livreur['current_lat'],
-                    'current_lng' => $livreur['current_lng'],
-                    'last_location_at' => $livreur['last_location_at']
+            $livreurProfile = $livreurModel->findWithDetails($order['livreur_id']);
+            
+            if ($livreurProfile) {
+                $order['livreur_location'] = [
+                    'current_lat' => $livreurProfile['current_lat'],
+                    'current_lng' => $livreurProfile['current_lng'],
+                    'last_location_at' => $livreurProfile['last_location_at']
                 ];
             }
         }
 
-        // Add status history
+        // Get status history
         $historyModel = new OrderStatusHistory();
-        $publicData['history'] = $historyModel->getByOrder($order['id']);
+        $order['status_history'] = $historyModel->getByOrder($order['id']);
 
-        Response::success($publicData);
+        // Remove sensitive fields if necessary, but user requested "all infos"
+        // We will remove only strictly internal/sensitive fields like passwords or unrelated IDs if present in joined tables
+        // Since findWithDetailsByReference joins with users table, we should be careful not to expose password hashes if they were selected (they are usually not in findWithDetailsBy unless explicitly selected or * is used on users table)
+        // Looking at Order::findWithDetailsBy, it selects:
+        // o.*, uc.first_name, uc.last_name, uc.phone, ul.first_name, ul.last_name, ul.phone, s.name
+        // So no passwords are exposed.
+
+        Response::success($order);
     }
 
     /**
