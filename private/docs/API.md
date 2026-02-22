@@ -1961,11 +1961,11 @@ Uploader une image pour une bannière.
 
 ---
 
-## 16. Maps — Proxy Cache Google Maps
+## 16. Maps — Proxy Cache Google Maps / Serper
 
-Proxy serveur pour les appels Google Maps avec cache automatique en base de données. Réduit drastiquement la consommation de l'API Google Maps.
+Proxy serveur pour les appels Google Maps (ou Serper.dev) avec cache automatique. Réduit drastiquement la consommation de l'API Google Maps.
 
-> **Principe** : L'app mobile appelle votre API au lieu de Google directement. Le serveur met en cache les résultats et les réutilise pour les requêtes identiques.
+> **Principe** : L'app mobile appelle votre API au lieu de Google directement. Le serveur met en cache les résultats et les réutilise pour les requêtes identiques. Si `serper_api_key` est configuré, l'autocomplete utilise Serper.dev (plus économique et rapide).
 
 ### `GET /api/maps/autocomplete` 🔒 Authentifié
 
@@ -1974,7 +1974,7 @@ Suggestions d'adresses (autocomplete).
 **Query params :**
 - `input` *(requis)* — Texte de recherche (min 2 caractères)
 - `country` — Code ISO pays (ex: `CM`)
-- `location` — Position GPS de l'utilisateur (ex: `4.0511,9.7679`). Active le tri par proximité et le calcul de `distance_meters`
+- `location` — Position GPS de l'utilisateur (ex: `4.0511,9.7679`). Active le tri par proximité (Google uniquement)
 - `radius` — Rayon de recherche en mètres (défaut: `50000`)
 
 **Réponse (200) :**
@@ -1984,16 +1984,18 @@ Suggestions d'adresses (autocomplete).
   "data": {
     "predictions": [
       {
-        "place_id": "ChIJ...",
+        "place_id": "serper:eyJ...",
         "description": "Bonapriso, Douala, Cameroun",
         "main_text": "Bonapriso",
         "secondary_text": "Douala, Cameroun",
-        "types": ["geocode", "neighborhood", "political"],
-        "matched_substrings": [{ "length": 9, "offset": 0 }],
-        "distance_meters": 8051
+        "types": ["geocode"],
+        "matched_substrings": [],
+        "distance_meters": null,
+        "latitude": 4.0511,
+        "longitude": 9.7679
       }
     ],
-    "source": "cache"
+    "source": "serper"
   }
 }
 ```
@@ -2002,15 +2004,14 @@ Suggestions d'adresses (autocomplete).
 
 | Champ | Description |
 |-------|-------------|
-| `place_id` | Identifiant Google (pour appeler `/api/maps/place-details`) |
+| `place_id` | Identifiant Google ou Serper ID (pour appeler `/api/maps/place-details`) |
 | `description` | Adresse complète |
 | `main_text` | Nom principal du lieu |
 | `secondary_text` | Contexte (ville, pays) |
-| `types` | Types de lieu (`geocode`, `establishment`, `restaurant`, etc.) |
-| `matched_substrings` | Positions des lettres correspondantes (pour le bold dans l'UI) |
-| `distance_meters` | Distance depuis `location` en mètres (présent uniquement si `location` est fourni) |
+| `types` | Types de lieu |
+| `latitude` / `longitude` | Coordonnées GPS (disponible immédiatement avec Serper) |
 
-> Le champ `source` indique `"google"` (appel réel) ou `"cache"` (résultat mis en cache).
+> Le champ `source` indique `"google"`, `"serper"` ou `"cache"`.
 
 ---
 

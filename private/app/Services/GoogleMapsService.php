@@ -8,6 +8,7 @@ use App\Models\Setting;
 class GoogleMapsService
 {
     private string $apiKey;
+    private string $serperApiKey;
     private GeoCache $cache;
     private const BASE_URL = 'https://maps.googleapis.com/maps/api';
 
@@ -15,14 +16,21 @@ class GoogleMapsService
     {
         $setting = new Setting();
         $this->apiKey = $setting->get('google_maps_server_key') ?? '';
+        $this->serperApiKey = $setting->get('serper_api_key') ?? '';
         $this->cache = new GeoCache();
     }
 
     /**
-     * Autocomplete — Suggestions d'adresses
+     * Autocomplete — Suggestions d'adresses (Via Serper.dev)
      */
     public function autocomplete(string $input, ?string $country = null, ?string $location = null, ?int $radius = null): array
     {
+        // Si Serper API Key est configurée, on l'utilise en priorité
+        if (!empty($this->serperApiKey)) {
+            return $this->autocompleteSerper($input, $country);
+        }
+
+        // Sinon fallback sur Google Maps
         $extra = array_filter([
             'country'  => $country,
             'location' => $location,
@@ -75,6 +83,60 @@ class GoogleMapsService
         }
 
         return ['source' => 'google', 'results' => [], 'error' => $response['status'] ?? 'UNKNOWN_ERROR'];
+    }
+
+    /**
+     * Autocomplete via Serper.dev
+     */
+    private function autocompleteSerper(string $input, ?string $country = null): array
+    {
+        $params = [
+            'q'  => $input,
+            'gl' => $country ? strtolower($country) : 'cm' // Par défaut Cameroun si non spécifié
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://google.serper.dev/places');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'X-API-KEY: ' . $this->serperApiKey,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            return ['source' => 'serper', 'results' => [], 'error' => 'Serper API Error: ' . $httpCode];
+        }
+
+        $data = json_decode($response, true);
+        $places = $data['places'] ?? [];
+        
+        $results = array_map(function ($p) {
+            // Encoder les données essentielles dans un faux place_id
+            $payload = [
+                'lat'  => $p['latitude'] ?? 0,
+                'lng'  => $p['longitude'] ?? 0,
+                'name' => $p['title'] ?? '',
+                'addr' => $p['address'] ?? '',
+            ];
+            $placeId = 'serper:' . base64_encode(json_encode($payload));
+
+            return [
+                'place_id'           => $placeId,
+                'description'        => ($p['title'] ?? '') . ', ' . ($p['address'] ?? ''),
+                'main_text'          => $p['title'] ?? '',
+                'secondary_text'     => $p['address'] ?? '',
+                'types'              => isset($p['category']) ? [$p['category']] : [],
+                'matched_substrings' => [],
+            ];
+        }, $places);
+
+        return ['source' => 'serper', 'results' => $results];
     }
 
     /**
@@ -208,6 +270,24 @@ class GoogleMapsService
      */
     public function placeDetails(string $placeId): array
     {
+        // Check for synthetic Serper ID
+        if (str_starts_with($placeId, 'serper:')) {
+            $json = base64_decode(substr($placeId, 7));
+            $data = json_decode($json, true);
+            if (!$data) {
+                return ['source' => 'serper', 'result' => null, 'error' => 'INVALID_SERPER_ID'];
+            }
+            
+            return ['source' => 'serper', 'result' => [
+                'name'              => $data['name'] ?? '',
+                'formatted_address' => $data['addr'] ?? '',
+                'latitude'          => $data['lat'] ?? null,
+                'longitude'         => $data['lng'] ?? null,
+                'place_id'          => $placeId,
+                'components'        => [], // Not available from Serper simple search
+            ]];
+        }
+
         $cacheKey = GeoCache::buildKey('geocode', 'place:' . $placeId);
 
         $cached = $this->cache->lookup($cacheKey);
