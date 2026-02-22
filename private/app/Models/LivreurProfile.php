@@ -11,7 +11,16 @@ class LivreurProfile extends Model
 
     public function findByUserId(int $userId): ?array
     {
-        return $this->findBy('user_id', $userId);
+        $stmt = $this->db->prepare("
+            SELECT lp.*, c.name AS company_name, c.logo AS company_logo
+            FROM {$this->table} lp
+            LEFT JOIN companies c ON c.id = lp.company_id
+            WHERE lp.user_id = :uid
+            LIMIT 1
+        ");
+        $stmt->execute(['uid' => $userId]);
+        $result = $stmt->fetch();
+        return $result ?: null;
     }
 
     public function getAvailableNear(float $lat, float $lng, float $radiusKm = 5.0, int $limit = 10): array

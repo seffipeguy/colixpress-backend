@@ -25,7 +25,8 @@
 14. [Promotions](#14-promotions)
 15. [Bannières / Actualités](#15-bannières--actualités)
 16. [Maps — Proxy Cache Google Maps](#16-maps--proxy-cache-google-maps)
-17. [API Développeur](#17-api-développeur)
+17. [Compagnies](#17-compagnies)
+18. [API Développeur](#18-api-développeur)
 
 ---
 
@@ -85,6 +86,7 @@ Toutes les réponses suivent ce format :
 | `client` | Utilisateur standard (par défaut) |
 | `livreur` | Livreur / coursier |
 | `shop_owner` | Propriétaire de boutique |
+| `company_manager` | Gestionnaire de flotte / compagnie |
 | `admin` | Administrateur |
 
 ### Pagination
@@ -2194,7 +2196,77 @@ Supprimer les entrées de cache expirées.
 
 ---
 
-## 17. API Développeur
+## 17. Compagnies
+
+### `GET /api/companies/me`
+Récupérer les informations de la compagnie de l'utilisateur connecté (company_manager).
+
+**Réponse :**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Super Express",
+    "owner_id": 5,
+    "email": "contact@superexpress.com",
+    "phone": "+237699999999",
+    "address": "Douala, Akwa",
+    "latitude": 4.051056,
+    "longitude": 9.767868,
+    "status": "active"
+  }
+}
+```
+
+### `GET /api/companies/{id}/livreurs`
+Liste les livreurs appartenant à la compagnie.
+
+**Réponse :**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 10,
+      "user_id": 45,
+      "is_available": 1,
+      "first_name": "Jean",
+      "last_name": "Dupont",
+      "phone": "+237600000000"
+    }
+  ]
+}
+```
+
+### `POST /api/companies`
+Créer une nouvelle compagnie.
+
+**Body :**
+```json
+{
+  "name": "Ma Compagnie",
+  "phone": "+237600000000",
+  "address": "Yaoundé",
+  "latitude": 3.8480,
+  "longitude": 11.5021,
+  "registre_commerce": "RC123456"
+}
+```
+
+### `POST /api/companies/{id}/livreurs`
+Ajouter un livreur existant à la compagnie via son numéro de téléphone.
+
+**Body :**
+```json
+{
+  "phone": "+237699887766"
+}
+```
+
+---
+
+## 18. API Développeur
 
 Permet à des plateformes tierces d'intégrer ColiXpress dans leurs applications (e-commerce, marketplace, etc.).
 

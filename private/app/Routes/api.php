@@ -61,6 +61,14 @@ $router->put('/api/orders/{reference}', App\Controllers\OrderController::class, 
 
 $router->group('', [Auth::class], function ($router) {
 
+    // --- Companies ---
+    $router->get('/api/companies/me', App\Controllers\CompanyController::class, 'me');
+    $router->post('/api/companies', App\Controllers\CompanyController::class, 'store');
+    $router->put('/api/companies/{id}', App\Controllers\CompanyController::class, 'update');
+    $router->get('/api/companies/{id}/livreurs', App\Controllers\CompanyController::class, 'livreurs');
+    $router->post('/api/companies/{id}/livreurs', App\Controllers\CompanyController::class, 'addLivreur');
+    $router->delete('/api/companies/{id}/livreurs/{livreur_id}', App\Controllers\CompanyController::class, 'removeLivreur');
+
     // --- Auth ---
     $router->post('/api/auth/logout', App\Controllers\AuthController::class, 'logout');
 
