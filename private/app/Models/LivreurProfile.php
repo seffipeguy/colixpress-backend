@@ -23,6 +23,20 @@ class LivreurProfile extends Model
         return $result ?: null;
     }
 
+    public function findWithDetails(int $userId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT lp.*, u.first_name, u.last_name, u.phone
+            FROM {$this->table} lp
+            JOIN users u ON u.id = lp.user_id
+            WHERE lp.user_id = :uid
+            LIMIT 1
+        ");
+        $stmt->execute(['uid' => $userId]);
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
     public function getAvailableNear(float $lat, float $lng, float $radiusKm = 5.0, int $limit = 10): array
     {
         $stmt = $this->db->prepare("

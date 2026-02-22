@@ -57,7 +57,7 @@ class OrderController extends Controller
 
         // Add status history
         $historyModel = new OrderStatusHistory();
-        $publicData['history'] = $historyModel->getForOrder($order['id']);
+        $publicData['history'] = $historyModel->getByOrder($order['id']);
 
         Response::success($publicData);
     }
