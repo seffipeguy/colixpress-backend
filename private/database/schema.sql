@@ -213,14 +213,14 @@ CREATE TABLE orders (
     shop_id INT NULL,
 
     -- Point de ramassage
-    pickup_address VARCHAR(500) NOT NULL,
+    pickup_address VARCHAR(500) NULL,
     pickup_lat DECIMAL(10,8) NULL,
     pickup_lng DECIMAL(11,8) NULL,
     pickup_contact_name VARCHAR(100) NULL,
     pickup_contact_phone VARCHAR(20) NULL,
 
     -- Point de livraison
-    dropoff_address VARCHAR(500) NOT NULL,
+    dropoff_address VARCHAR(500) NULL,
     dropoff_lat DECIMAL(10,8) NULL,
     dropoff_lng DECIMAL(11,8) NULL,
     dropoff_contact_name VARCHAR(100) NULL,

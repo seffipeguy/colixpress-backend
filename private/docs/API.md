@@ -806,7 +806,7 @@ Détail d'une commande (inclut `status_history` et `items` pour les commandes sh
 
 ---
 
-### `PUT /api/orders/{id}`
+### `PUT /api/orders/{id}` 🟢 Public
 
 Mettre à jour les informations d'une commande existante.
 
@@ -814,7 +814,7 @@ Mettre à jour les informations d'une commande existante.
 > **Condition :** La commande doit être au statut `pending`. Le prix est automatiquement recalculé si les adresses ou les informations du colis changent.
 
 **Body :**
-Tous les champs sont optionnels.
+Tous les champs sont optionnels (voir `POST /api/orders` pour la liste complète).
 ```json
 {
   "pickup_address": "Bali, Douala",
@@ -822,7 +822,8 @@ Tous les champs sont optionnels.
   "pickup_lng": 9.7000,
   "dropoff_address": "Bonanjo, Douala",
   "notes": "Changement d'adresse de livraison",
-  "package_size": "moyen"
+  "package_size": "moyen",
+  "pickup_scheduled_at": "2026-03-01 10:00:00"
 }
 ```
 
