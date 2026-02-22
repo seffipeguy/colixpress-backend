@@ -38,6 +38,9 @@ $router->get('/api/shops/{id}', App\Controllers\ShopController::class, 'show');
 $router->get('/api/shop-categories', App\Controllers\ShopController::class, 'categories');
 $router->get('/api/shop-tags', App\Controllers\ShopController::class, 'tags');
 
+// Google Custom Search for Shops
+$router->get('/api/search/shops', App\Controllers\SearchController::class, 'searchShops');
+
 // Pricing info (public)
 $router->get('/api/pricing', App\Controllers\PricingController::class, 'index');
 $router->get('/api/pricing/{city}', App\Controllers\PricingController::class, 'show');
