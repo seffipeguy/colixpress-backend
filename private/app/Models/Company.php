@@ -25,6 +25,17 @@ class Company extends Model
         return $stmt->fetchAll();
     }
 
+    public function getShops(int $companyId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT s.*
+            FROM shops s
+            WHERE s.company_id = :cid
+        ");
+        $stmt->execute(['cid' => $companyId]);
+        return $stmt->fetchAll();
+    }
+
     public function addLivreur(int $companyId, int $livreurId): bool
     {
         $stmt = $this->db->prepare("UPDATE livreur_profiles SET company_id = :cid WHERE user_id = :lid");

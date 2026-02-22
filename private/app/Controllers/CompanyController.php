@@ -8,6 +8,7 @@ use App\Core\Response;
 use App\Core\Auth;
 use App\Models\Company;
 use App\Models\LivreurProfile;
+use App\Models\Shop;
 use App\Models\User;
 
 class CompanyController extends Controller
@@ -186,5 +187,92 @@ class CompanyController extends Controller
 
         $companyModel->removeLivreur($company['id'], $livreurId);
         Response::success([], 'Livreur removed from company');
+    }
+
+    /**
+     * GET /api/companies/{id}/shops
+     * List company shops
+     */
+    public function shops(Request $request): void
+    {
+        $this->requireRole('company_manager', 'admin');
+        
+        $companyModel = new Company();
+        $company = $companyModel->find((int) $request->param('id'));
+
+        if (!$company) {
+            Response::notFound('Company not found');
+        }
+
+        if (!Auth::isAdmin() && $company['owner_id'] !== $this->userId()) {
+            Response::forbidden();
+        }
+
+        $shops = $companyModel->getShops($company['id']);
+        Response::success($shops);
+    }
+
+    /**
+     * POST /api/companies/{id}/shops
+     * Add a shop to company (by shop ID)
+     */
+    public function addShop(Request $request): void
+    {
+        $this->requireRole('company_manager', 'admin');
+        $request->validate(['shop_id']);
+        
+        $companyModel = new Company();
+        $company = $companyModel->find((int) $request->param('id'));
+
+        if (!$company) {
+            Response::notFound('Company not found');
+        }
+
+        if (!Auth::isAdmin() && $company['owner_id'] !== $this->userId()) {
+            Response::forbidden();
+        }
+
+        $shopId = (int) $request->input('shop_id');
+        $shopModel = new Shop();
+        $shop = $shopModel->find($shopId);
+
+        if (!$shop) {
+            Response::notFound('Shop not found');
+        }
+
+        // Optional: Check if shop owner agrees or if company manager owns the shop?
+        // For now, assume company manager can add any shop (maybe needs an invite system later)
+        // Or check if shop doesn't already belong to a company
+        if (!empty($shop['company_id'])) {
+            Response::error('Shop already belongs to a company', 409);
+        }
+
+        $shopModel->attachToCompany($shop['id'], $company['id']);
+        Response::success([], 'Shop added to company');
+    }
+
+    /**
+     * DELETE /api/companies/{id}/shops/{shop_id}
+     * Remove shop from company
+     */
+    public function removeShop(Request $request): void
+    {
+        $this->requireRole('company_manager', 'admin');
+        
+        $companyModel = new Company();
+        $company = $companyModel->find((int) $request->param('id'));
+        $shopId = (int) $request->param('shop_id');
+
+        if (!$company) {
+            Response::notFound('Company not found');
+        }
+
+        if (!Auth::isAdmin() && $company['owner_id'] !== $this->userId()) {
+            Response::forbidden();
+        }
+
+        $shopModel = new Shop();
+        $shopModel->detachFromCompany($shopId, $company['id']);
+        Response::success([], 'Shop removed from company');
     }
 }

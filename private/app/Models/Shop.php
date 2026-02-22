@@ -220,4 +220,16 @@ class Shop extends Model
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
+    public function attachToCompany(int $shopId, int $companyId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET company_id = :cid WHERE id = :sid");
+        return $stmt->execute(['cid' => $companyId, 'sid' => $shopId]);
+    }
+
+    public function detachFromCompany(int $shopId, int $companyId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET company_id = NULL WHERE id = :sid AND company_id = :cid");
+        return $stmt->execute(['cid' => $companyId, 'sid' => $shopId]);
+    }
 }

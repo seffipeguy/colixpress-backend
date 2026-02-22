@@ -2264,6 +2264,37 @@ Ajouter un livreur existant à la compagnie via son numéro de téléphone.
 }
 ```
 
+### `GET /api/companies/{id}/shops`
+Liste les boutiques appartenant à la compagnie.
+
+**Réponse :**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 5,
+      "name": "Boutique Mode",
+      "address": "Akwa",
+      "company_id": 1
+    }
+  ]
+}
+```
+
+### `POST /api/companies/{id}/shops`
+Ajouter une boutique à la compagnie.
+
+**Body :**
+```json
+{
+  "shop_id": 12
+}
+```
+
+### `DELETE /api/companies/{id}/shops/{shop_id}`
+Retirer une boutique de la compagnie.
+
 ---
 
 ## 18. API Développeur

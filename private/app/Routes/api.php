@@ -68,6 +68,9 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/companies/{id}/livreurs', App\Controllers\CompanyController::class, 'livreurs');
     $router->post('/api/companies/{id}/livreurs', App\Controllers\CompanyController::class, 'addLivreur');
     $router->delete('/api/companies/{id}/livreurs/{livreur_id}', App\Controllers\CompanyController::class, 'removeLivreur');
+    $router->get('/api/companies/{id}/shops', App\Controllers\CompanyController::class, 'shops');
+    $router->post('/api/companies/{id}/shops', App\Controllers\CompanyController::class, 'addShop');
+    $router->delete('/api/companies/{id}/shops/{shop_id}', App\Controllers\CompanyController::class, 'removeShop');
 
     // --- Auth ---
     $router->post('/api/auth/logout', App\Controllers\AuthController::class, 'logout');
