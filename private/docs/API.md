@@ -1003,6 +1003,38 @@ Classement global des boutiques les plus commandées sur la plateforme. Idéal p
 
 ---
 
+### `GET /api/search/shops` 🟢 Public
+
+Rechercher des produits ou services dans les boutiques via leur site web (Serper.dev).
+
+**Query params :**
+
+| Param | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `q` | string | ✅ | Termes de recherche (ex: "iphone") |
+| `shop_id` | int | ❌ | ID d'une boutique spécifique. Si omis, cherche dans **toutes** les boutiques. |
+
+**Réponse (200) :**
+```json
+{
+  "success": true,
+  "data": {
+    "query": "iphone site:https://glotelho.cm/ OR site:https://easy-market.net/",
+    "total_results": 10,
+    "items": [
+      {
+        "title": "Apple - iPhone 16 - Glotelho Cameroun",
+        "link": "https://glotelho.cm/product/iphone-16...",
+        "snippet": "iPhone 17 - 512 Go - 8Go RAM...",
+        "thumbnail": null
+      }
+    ]
+  }
+}
+```
+
+---
+
 ## 8. Configuration App
 
 ### `GET /api/settings/app-version` 🟢 Public
@@ -2525,9 +2557,9 @@ Règles de tarification actives.
 |---|---------|----------|-------------|
 | 92 | POST | `/api/v1/orders` | Créer une commande |
 | 93 | GET | `/api/v1/orders` | Lister ses commandes |
-| 94 | GET | `/api/v1/orders/{id}` | Détail commande |
+| 94 | GET | `/api/v1/orders/{reference}` | Détail commande |
 | 95 | GET | `/api/v1/orders/by-reference/{ref}` | Chercher par ref externe |
-| 96 | PUT | `/api/v1/orders/{reference}/cancel` | Annuler |
+| 96 | PUT | `/api/v1/orders/{id}/cancel` | Annuler |
 | 97 | GET | `/api/v1/orders/{id}/tracking` | Tracking GPS |
 | 98 | GET | `/api/v1/estimate` | Estimation prix |
 | 99 | GET | `/api/v1/shops` | Liste boutiques |
