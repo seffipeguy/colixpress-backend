@@ -38,6 +38,8 @@ class OrderController extends Controller
             'dropoff_contact_phone'=> $request->input('dropoff_contact_phone'),
             'payment_method'       => $request->input('payment_method', 'cash'),
             'notes'                => $request->input('notes'),
+            'pickup_instructions'  => $request->input('pickup_instructions'),
+            'delivery_instructions'=> $request->input('delivery_instructions'),
             'pickup_scheduled_at'  => $request->input('pickup_scheduled_at'),
             'scheduled_at'         => $request->input('scheduled_at'),
             'status'               => 'pending',
@@ -225,7 +227,7 @@ class OrderController extends Controller
             'pickup_address', 'pickup_lat', 'pickup_lng', 'pickup_contact_name', 'pickup_contact_phone',
             'dropoff_address', 'dropoff_lat', 'dropoff_lng', 'dropoff_contact_name', 'dropoff_contact_phone',
             'package_description', 'package_size', 'package_weight_kg', 'package_value',
-            'notes', 'pickup_scheduled_at', 'scheduled_at', 'payment_method'
+            'notes', 'pickup_instructions', 'delivery_instructions', 'pickup_scheduled_at', 'scheduled_at', 'payment_method'
         ];
 
         foreach ($fields as $field) {

@@ -610,7 +610,9 @@ Créer une commande de livraison.
 | `package_value` | int | ❌ | Valeur estimée du colis en XAF (surcharge si > seuil) |
 | `maps_usage` | object | ❌ | Compteur d'appels Maps (ex: `{"autocomplete":3,"geocode":2,"directions":1}`) |
 | `payment_method` | string | ❌ | `cash` (défaut), `mobile_money` |
-| `notes` | string | ❌ | Instructions particulières |
+| `notes` | string | ❌ | Note globale sur la commande |
+| `pickup_instructions` | string | ❌ | Instructions spécifiques pour le ramassage |
+| `delivery_instructions` | string | ❌ | Instructions spécifiques pour la livraison |
 | `pickup_scheduled_at` | datetime | ❌ | Créneau horaire souhaité pour le ramassage (format: `Y-m-d H:i:s`) |
 | `scheduled_at` | datetime | ❌ | Créneau horaire souhaité pour la livraison (format: `Y-m-d H:i:s`) |
 | `shop_id` | int | ✅ shop | ID de la boutique |
