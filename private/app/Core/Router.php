@@ -60,6 +60,16 @@ class Router
         $method = $request->method();
         $uri = $request->uri();
 
+        // Log incoming request
+        $logParams = $request->all();
+        $sensitive = ['password', 'password_confirmation', 'token', 'secret', 'new_password'];
+        foreach ($sensitive as $key) {
+            if (isset($logParams[$key])) {
+                $logParams[$key] = '********';
+            }
+        }
+        Logger::info("REQUEST: {$method} {$uri}", $logParams);
+
         foreach ($this->routes as $route) {
             if ($route['method'] !== $method) {
                 continue;

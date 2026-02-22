@@ -6,6 +6,14 @@ class Response
 {
     public static function json(mixed $data, int $code = 200): void
     {
+        // Log response
+        $logContext = is_array($data) ? $data : ['data' => $data];
+        if (isset($logContext['data']) && (is_array($logContext['data']) || is_object($logContext['data']))) {
+             // Avoid logging huge data
+             $logContext['data'] = '[DATA]'; 
+        }
+        Logger::info("RESPONSE: {$code}", $logContext);
+
         http_response_code($code);
         echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
