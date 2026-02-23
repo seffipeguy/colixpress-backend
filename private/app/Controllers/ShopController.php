@@ -13,16 +13,37 @@ use App\Models\ShopTag;
 class ShopController extends Controller
 {
     /**
+     * Helper to resolve category ID from request (id or name)
+     */
+    private function resolveCategoryId(Request $request): ?int
+    {
+        if ($request->query('category_id')) {
+            return (int) $request->query('category_id');
+        }
+
+        $categoryName = $request->query('category');
+        if ($categoryName) {
+            $catModel = new ShopCategory();
+            $category = $catModel->findByName($categoryName);
+            return $category ? (int) $category['id'] : -1; // -1 to force empty result if not found
+        }
+
+        return null;
+    }
+
+    /**
      * GET /api/shops
      * Query: ?category_id=1&city=Douala&page=1&per_page=20
      */
     public function index(Request $request): void
     {
         $model = new Shop();
+        $categoryId = $this->resolveCategoryId($request);
+        
         $result = $model->getApproved(
             $request->page(),
             $request->perPage(),
-            $request->query('category_id') ? (int) $request->query('category_id') : null,
+            $categoryId,
             $request->query('city'),
             $request->query('q')
         );
@@ -43,7 +64,7 @@ class ShopController extends Controller
         }
 
         $radius = (float) $request->query('radius', 50); // Default 50km
-        $categoryId = $request->query('category_id') ? (int) $request->query('category_id') : null;
+        $categoryId = $this->resolveCategoryId($request);
         $page = $request->page();
         $perPage = $request->perPage();
         $offset = ($page - 1) * $perPage;
@@ -63,10 +84,11 @@ class ShopController extends Controller
         $model = new Shop();
         $limit = (int) $request->query('limit', 10);
         $limit = max(1, min($limit, 50));
+        $categoryId = $this->resolveCategoryId($request);
 
         $shops = $model->getPopular(
             $limit,
-            $request->query('category_id') ? (int) $request->query('category_id') : null,
+            $categoryId,
             $request->query('city')
         );
 

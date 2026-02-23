@@ -23,6 +23,14 @@ class ShopCategory extends Model
         return $this->buildTree($all);
     }
 
+    public function findByName(string $name): ?array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE name = :name LIMIT 1");
+        $stmt->execute(['name' => $name]);
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
     private function buildTree(array $elements, ?int $parentId = null): array
     {
         $branch = [];

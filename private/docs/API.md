@@ -977,7 +977,8 @@ Parcourir et rechercher les boutiques approuvées.
 
 **Query params :**
 - `q` — Recherche par nom, description ou adresse
-- `category_id` — Filtrer par catégorie
+- `category` — Filtrer par nom de catégorie (ex: "Restaurant")
+- `category_id` — Filtrer par ID de catégorie (obsolète, préférez `category`)
 - `city` — Filtrer par ville
 - `page`, `per_page`
 
@@ -1023,7 +1024,8 @@ Rechercher les boutiques à proximité d'une position GPS, triées par distance 
 | `lat` | float | ✅ | Latitude |
 | `lng` | float | ✅ | Longitude |
 | `radius` | int | ❌ | Rayon de recherche en km (défaut : 50) |
-| `category_id` | int | ❌ | Filtrer par catégorie |
+| `category` | string | ❌ | Filtrer par nom de catégorie (ex: "Restaurant") |
+| `category_id` | int | ❌ | Filtrer par ID de catégorie (obsolète) |
 | `page` | int | ❌ | Pagination |
 | `per_page` | int | ❌ | Nombre par page |
 
