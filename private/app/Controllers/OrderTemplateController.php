@@ -165,24 +165,38 @@ class OrderTemplateController extends Controller
         $mediaRefs = $request->input('media_references', []);
         if (!empty($mediaRefs) && is_array($mediaRefs)) {
             $mediaUploadModel = new MediaUpload();
-            $resolved = $mediaUploadModel->resolveReferences($mediaRefs, $this->userId());
-            if (isset($resolved['error'])) {
-                Response::error($resolved['error'], 422);
-            }
             $current       = isset($updatable['default_values'])
                 ? (json_decode($updatable['default_values'], true) ?? [])
                 : (json_decode($template['default_values'], true) ?? []);
             $existingMedia = $current['package_media'] ?? [];
-            foreach ($resolved as $m) {
+
+            // Références déjà présentes dans ce template (pour ne pas les bloquer)
+            $alreadyLinkedRefs = array_column($existingMedia, 'reference');
+
+            foreach ($mediaRefs as $ref) {
+                // Si déjà dans ce template, on skip sans erreur
+                if (in_array($ref, $alreadyLinkedRefs)) {
+                    continue;
+                }
+                $media = $mediaUploadModel->findByReference($ref);
+                if (!$media) {
+                    Response::error("Référence média introuvable : {$ref}", 422);
+                }
+                if ((int) $media['uploaded_by'] !== $this->userId()) {
+                    Response::error("Référence média non autorisée : {$ref}", 422);
+                }
+                if ($media['linked_to'] !== null) {
+                    Response::error("Référence média déjà utilisée ailleurs : {$ref}", 422);
+                }
                 $existingMedia[] = [
-                    'reference' => $m['reference'],
-                    'file_url'  => $m['file_url'],
-                    'file_path' => $m['file_path'],
-                    'file_type' => $m['file_type'],
-                    'mime_type' => $m['mime_type'],
-                    'file_size' => $m['file_size'],
+                    'reference' => $media['reference'],
+                    'file_url'  => $media['file_url'],
+                    'file_path' => $media['file_path'],
+                    'file_type' => $media['file_type'],
+                    'mime_type' => $media['mime_type'],
+                    'file_size' => $media['file_size'],
                 ];
-                $mediaUploadModel->markLinked((int) $m['id'], 'template', (int) $template['id']);
+                $mediaUploadModel->markLinked((int) $media['id'], 'template', (int) $template['id']);
             }
             $current['package_media']    = $existingMedia;
             $updatable['default_values'] = json_encode($current, JSON_UNESCAPED_UNICODE);

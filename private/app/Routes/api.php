@@ -136,6 +136,7 @@ $router->group('', [Auth::class], function ($router) {
     $router->post('/api/orders', App\Controllers\OrderController::class, 'store');
     $router->get('/api/orders/pending', App\Controllers\OrderController::class, 'pending');
     $router->get('/api/orders/estimate', App\Controllers\OrderController::class, 'estimate');
+    $router->get('/api/orders/active-summary', App\Controllers\OrderController::class, 'activeSummary');
     $router->get('/api/orders/frequent-places', App\Controllers\OrderController::class, 'frequentPlaces');
     $router->get('/api/orders/frequent-shops', App\Controllers\OrderController::class, 'frequentShops');
     $router->get('/api/orders/{reference}', App\Controllers\OrderController::class, 'show');
@@ -152,6 +153,11 @@ $router->group('', [Auth::class], function ($router) {
 
     // --- Order Ratings ---
     $router->post('/api/orders/{reference}/rating', App\Controllers\RatingController::class, 'store');
+
+    // --- Order Messages (messagerie par commande) ---
+    $router->get('/api/orders/{reference}/messages',      App\Controllers\OrderMessageController::class, 'index');
+    $router->post('/api/orders/{reference}/messages',     App\Controllers\OrderMessageController::class, 'store');
+    $router->patch('/api/orders/{reference}/messages/read', App\Controllers\OrderMessageController::class, 'markRead');
 
     // --- Dispatching / Affrètement ---
     $router->get('/api/dispatch/pool',                    App\Controllers\DispatcherController::class, 'pool');
@@ -191,6 +197,7 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/support/tickets', App\Controllers\SupportController::class, 'index');
     $router->get('/api/support/tickets/{reference}', App\Controllers\SupportController::class, 'show');
     $router->post('/api/support/tickets/{reference}/messages', App\Controllers\SupportController::class, 'addMessage');
+    $router->post('/api/support/tickets/{reference}/media',    App\Controllers\SupportController::class, 'uploadMedia');
 
     // --- Admin: Support ---
     $router->get('/api/admin/support/tickets', App\Controllers\SupportController::class, 'adminIndex');

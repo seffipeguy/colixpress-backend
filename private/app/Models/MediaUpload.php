@@ -9,10 +9,15 @@ class MediaUpload extends Model
     protected string $table = 'media_uploads';
 
     public const ALLOWED_MIME = [
-        'image/jpeg' => 'jpg',
-        'image/png'  => 'png',
-        'image/webp' => 'webp',
-        'video/mp4'  => 'mp4',
+        'image/jpeg'  => 'jpg',
+        'image/png'   => 'png',
+        'image/gif'   => 'gif',
+        'image/webp'  => 'webp',
+        'video/mp4'   => 'mp4',
+        'audio/webm'  => 'webm',
+        'audio/mp4'   => 'm4a',
+        'audio/mpeg'  => 'mp3',
+        'audio/ogg'   => 'ogg',
     ];
     public const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 

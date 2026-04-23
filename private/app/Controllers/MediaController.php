@@ -23,8 +23,14 @@ class MediaController extends Controller
         $file     = $_FILES['file'];
         $mimeType = mime_content_type($file['tmp_name']);
 
-        if (!array_key_exists($mimeType, MediaUpload::ALLOWED_MIME)) {
-            Response::error('Type de fichier non autorisé. Formats acceptés : jpg, png, webp, mp4', 422);
+        $allowedMime = array_merge(MediaUpload::ALLOWED_MIME, [
+            'application/pdf'      => 'pdf',
+            'application/msword'   => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+        ]);
+
+        if (!array_key_exists($mimeType, $allowedMime)) {
+            Response::error('Type de fichier non autorisé. Formats acceptés : jpg, png, gif, webp, mp4, mp3, webm, m4a, ogg, pdf, doc', 422);
         }
 
         if ($file['size'] > MediaUpload::MAX_SIZE) {
@@ -33,18 +39,20 @@ class MediaController extends Controller
 
         $mediaModel = new MediaUpload();
         $reference  = $mediaModel->generateReference();
-        $ext        = MediaUpload::ALLOWED_MIME[$mimeType];
+        $ext        = $allowedMime[$mimeType];
         $fileName   = $reference . '.' . $ext;
         $dir        = UPLOAD_DIR . '/media';
         $filePath   = $dir . '/' . $fileName;
         $fileUrl    = UPLOAD_URL . '/media/' . $fileName;
-        $fileType   = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
+        $fileType   = str_starts_with($mimeType, 'video/') ? 'video'
+                    : (str_starts_with($mimeType, 'audio/') ? 'audio'
+                    : (str_starts_with($mimeType, 'image/') ? 'image' : 'document'));
 
         if (!move_uploaded_file($file['tmp_name'], $filePath)) {
             Response::error('Échec de l\'enregistrement du fichier', 500);
         }
 
-        $mediaModel->create([
+        $mediaId = $mediaModel->create([
             'reference'   => $reference,
             'file_name'   => $fileName,
             'file_path'   => $filePath,
@@ -55,17 +63,15 @@ class MediaController extends Controller
             'uploaded_by' => $this->userId(),
         ]);
 
-        Response::json([
-            'success'   => true,
-            'message'   => 'Fichier uploadé avec succès',
-            'data'      => [
-                'reference' => $reference,
-                'file_url'  => $fileUrl,
-                'file_type' => $fileType,
-                'mime_type' => $mimeType,
-                'file_size' => $file['size'],
-            ],
-        ], 201);
+        Response::success([
+            'id'        => $mediaId,
+            'reference' => $reference,
+            'file_url'  => $fileUrl,
+            'file_type' => $fileType,
+            'file_name' => $fileName,
+            'mime_type' => $mimeType,
+            'file_size' => $file['size'],
+        ], 'Fichier uploadé avec succès', 201);
     }
 
     /**

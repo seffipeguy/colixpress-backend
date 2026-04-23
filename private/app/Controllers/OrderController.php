@@ -10,6 +10,7 @@ use App\Models\MediaUpload;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderMedia;
+use App\Models\OrderMessage;
 use App\Models\OrderStatusHistory;
 use App\Models\LivreurProfile;
 use App\Models\Notification;
@@ -159,7 +160,11 @@ class OrderController extends Controller
             isset($data['package_weight_kg']) ? (float) $data['package_weight_kg'] : null,
             $data['package_value']
         );
-        $data['price'] = $priceResult['price'] + $data['maps_api_cost'];
+        $isRoundTrip = (bool) $request->input('is_round_trip', false);
+        $data['is_round_trip'] = $isRoundTrip ? 1 : 0;
+        $basePrice = $priceResult['price'];
+        $roundTripSurcharge = $isRoundTrip ? (int) ceil($basePrice * 0.5) : 0;
+        $data['price'] = $basePrice + $roundTripSurcharge + $data['maps_api_cost'];
         $data['currency'] = 'XAF';
 
         // For shop orders, add items total to price
@@ -258,9 +263,16 @@ class OrderController extends Controller
             $result = $orderModel->getByClient($this->userId(), $request->page(), $request->perPage(), $status);
         }
 
+        $isClient  = !Auth::isAdmin() && !Auth::isLivreur();
         $mediaModel = new OrderMedia();
-        $result['data'] = array_map(function ($order) use ($mediaModel) {
-            $order['media'] = $mediaModel->getByOrder((int) $order['id']);
+        $msgModel   = new OrderMessage();
+
+        $result['data'] = array_map(function ($order) use ($mediaModel, $msgModel, $isClient) {
+            $orderId = (int) $order['id'];
+            $order['media']           = $mediaModel->getByOrder($orderId);
+            $order['unread_messages'] = $isClient
+                ? $msgModel->countUnreadForClient($orderId)
+                : $msgModel->countUnreadForStaff($orderId);
             return $order;
         }, $result['data']);
 
@@ -310,6 +322,15 @@ class OrderController extends Controller
         // Include media
         $mediaModel = new OrderMedia();
         $order['media'] = $mediaModel->getByOrder((int) $order['id']);
+
+        // Include messaging info
+        $msgModel = new OrderMessage();
+        $isClient = (int) $order['client_id'] === $this->userId();
+        $order['unread_messages'] = $isClient
+            ? $msgModel->countUnreadForClient((int) $order['id'])
+            : $msgModel->countUnreadForStaff((int) $order['id']);
+        $messages = $msgModel->getByOrder((int) $order['id']);
+        $order['last_message'] = !empty($messages) ? end($messages) : null;
 
         Response::success($order);
     }
@@ -455,11 +476,13 @@ class OrderController extends Controller
         }
 
         $newStatus = $request->input('status');
+        $isRoundTrip = !empty($order['is_round_trip']);
         $allowedTransitions = [
             'accepted'   => ['picking_up', 'cancelled'],
             'picking_up' => ['picked_up', 'cancelled'],
             'picked_up'  => ['in_transit', 'cancelled'],
-            'in_transit' => ['delivered', 'cancelled'],
+            'in_transit' => $isRoundTrip ? ['returning', 'cancelled'] : ['delivered', 'cancelled'],
+            'returning'  => ['delivered', 'cancelled'],
         ];
 
         $currentStatus = $order['status'];
@@ -637,19 +660,28 @@ class OrderController extends Controller
             Response::error('All coordinates are required', 422);
         }
 
-        $distanceKm = $this->haversineDistance($pickupLat, $pickupLng, $dropoffLat, $dropoffLng);
+        $distanceKm = (float) $request->query('distance_km', 0);
+        if ($distanceKm <= 0) {
+            $distanceKm = $this->haversineDistance($pickupLat, $pickupLng, $dropoffLat, $dropoffLng);
+        }
         $orderModel = new Order();
         $packageSize  = $request->query('package_size');
         $packageWeight = $request->query('package_weight_kg') ? (float) $request->query('package_weight_kg') : null;
         $packageValue = (int) $request->query('package_value', 0);
+        $isRoundTrip  = (bool) $request->query('is_round_trip', false);
 
         $priceResult = $orderModel->calculatePrice($distanceKm, $city, $packageSize, $packageWeight, $packageValue);
+        $basePrice = $priceResult['price'];
+        $roundTripSurcharge = $isRoundTrip ? (int) ceil($basePrice * 0.5) : 0;
 
         $response = [
-            'distance_km'     => round($distanceKm, 2),
-            'price'           => $priceResult['price'],
-            'currency'        => 'XAF',
-            'city'            => $city,
+            'distance_km'        => round($distanceKm, 2),
+            'price'              => $basePrice + $roundTripSurcharge,
+            'base_price'         => $basePrice,
+            'is_round_trip'      => $isRoundTrip,
+            'round_trip_surcharge' => $roundTripSurcharge,
+            'currency'           => 'XAF',
+            'city'               => $city,
         ];
         if ($priceResult['value_surcharge'] > 0) {
             $response['value_surcharge'] = $priceResult['value_surcharge'];
@@ -701,5 +733,69 @@ class OrderController extends Controller
            * sin($dLng / 2) * sin($dLng / 2);
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
         return $earthRadius * $c;
+    }
+
+    /**
+     * GET /api/orders/active-summary
+     * Résumé des commandes actives de l'utilisateur connecté :
+     * - 2 dernières commandes en cours (priorise celles déjà commencées)
+     * - Nombre de commandes restantes actives (hors les 2)
+     * - Nombre total de messages non lus liés à ses commandes
+     */
+    public function activeSummary(Request $request): void
+    {
+        $userId = $this->userId();
+        $db     = \App\Config\Database::getInstance();
+
+        // Ordre de priorité : statuts avancés en premier, puis pending
+        $statusPriority = "FIELD(o.status, 'in_transit', 'picked_up', 'picking_up', 'accepted', 'pending')";
+
+        // Toutes les commandes actives (ni delivered ni cancelled)
+        $stmt = $db->prepare("
+            SELECT o.id, o.reference, o.status, o.created_at, o.claimed_by,
+                   o.pickup_address, o.dropoff_address, o.price,
+                   o.livreur_id,
+                   CONCAT(lv.first_name, ' ', lv.last_name) AS livreur_name,
+                   COALESCE(unread.cnt, 0) AS unread_messages
+            FROM orders o
+            LEFT JOIN users lv ON lv.id = o.livreur_id
+            LEFT JOIN (
+                SELECT order_id, COUNT(*) AS cnt
+                FROM order_messages
+                WHERE is_read_by_client = 0
+                  AND sender_role != 'client'
+                GROUP BY order_id
+            ) unread ON unread.order_id = o.id
+            WHERE o.client_id = :uid
+              AND o.status NOT IN ('delivered', 'cancelled')
+            ORDER BY {$statusPriority} ASC, o.updated_at DESC
+        ");
+        $stmt->execute(['uid' => $userId]);
+        $all = $stmt->fetchAll();
+
+        $top2      = array_slice($all, 0, 2);
+        $remaining = max(0, count($all) - 2);
+
+        // Total messages non lus sur toutes ses commandes
+        $stmtUnread = $db->prepare("
+            SELECT COALESCE(SUM(sub.cnt), 0) AS total
+            FROM (
+                SELECT om.order_id, COUNT(*) AS cnt
+                FROM order_messages om
+                JOIN orders o ON o.id = om.order_id
+                WHERE o.client_id = :uid
+                  AND om.is_read_by_client = 0
+                  AND om.sender_role != 'client'
+                GROUP BY om.order_id
+            ) sub
+        ");
+        $stmtUnread->execute(['uid' => $userId]);
+        $totalUnread = (int) $stmtUnread->fetchColumn();
+
+        Response::success([
+            'active_orders'          => $top2,
+            'remaining_active_count' => $remaining,
+            'total_unread_messages'  => $totalUnread,
+        ]);
     }
 }
