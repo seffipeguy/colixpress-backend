@@ -271,7 +271,8 @@ class Order extends Model
                    MAX(o.created_at) AS last_order_at
             FROM {$this->table} o
             JOIN shops s ON s.id = o.shop_id
-            LEFT JOIN shop_categories sc ON sc.id = s.category_id
+            LEFT JOIN shop_category_map scm ON scm.shop_id = s.id
+            LEFT JOIN shop_categories sc ON sc.id = scm.category_id
             WHERE o.client_id = :uid AND o.shop_id IS NOT NULL
             GROUP BY s.id, s.name, s.address, s.latitude, s.longitude, s.phone,
                      s.logo, s.cover_photo, sc.name

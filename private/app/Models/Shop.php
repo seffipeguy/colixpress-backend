@@ -11,7 +11,7 @@ class Shop extends Model
 
     public function getApproved(int $page, int $perPage, ?int $categoryId = null, ?string $city = null, ?string $search = null): array
     {
-        $where = 's.is_active = 1 AND s.is_approved = 1';
+        $where = 's.is_active = 1 AND s.is_approved = 1 AND s.is_featured = 1';
         $params = [];
 
         // Join with shop_category_map if category filter is applied
@@ -274,9 +274,9 @@ class Shop extends Model
 
     public function getAllShopUrls(): array
     {
-        $stmt = $this->db->prepare("SELECT website_url FROM {$this->table} WHERE is_active = 1 AND is_approved = 1 AND website_url IS NOT NULL AND website_url != ''");
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE is_active = 1 AND is_approved = 1 AND website_url IS NOT NULL AND website_url != ''");
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return $stmt->fetchAll();
     }
 
     public function attachToCompany(int $shopId, int $companyId): bool

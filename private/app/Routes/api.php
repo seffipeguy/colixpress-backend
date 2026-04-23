@@ -51,10 +51,22 @@ $router->get('/api/settings/public', App\Controllers\SettingsController::class, 
 $router->get('/api/settings/maps-pricing', App\Controllers\SettingsController::class, 'mapsPricing');
 $router->get('/api/settings/app-version', App\Controllers\SettingsController::class, 'appVersion');
 
+// Maps (public)
+$router->get('/api/maps/autocomplete', App\Controllers\MapsController::class, 'autocomplete');
+$router->get('/api/maps/place-details', App\Controllers\MapsController::class, 'placeDetails');
+
+// VAPID public key (public)
+$router->get('/api/push/vapid-public-key', App\Controllers\PushController::class, 'vapidPublicKey');
+
 // Banners / News (public, with optional auth for role targeting)
 $router->get('/api/banners', App\Controllers\BannerController::class, 'index');
 $router->get('/api/tracking/{reference}', App\Controllers\OrderController::class, 'publicTracking');
 $router->put('/api/orders/{reference}', App\Controllers\OrderController::class, 'update');
+
+// Order Templates (Public)
+$router->get('/api/templates/check-slug', App\Controllers\OrderTemplateController::class, 'checkSlug');
+$router->get('/api/templates/{slug}', App\Controllers\OrderTemplateController::class, 'show');
+$router->post('/api/templates/{slug}/instantiate', App\Controllers\OrderTemplateController::class, 'instantiate');
 
 
 // =============================================
@@ -62,6 +74,14 @@ $router->put('/api/orders/{reference}', App\Controllers\OrderController::class, 
 // =============================================
 
 $router->group('', [Auth::class], function ($router) {
+
+    // --- Order Templates (Private) ---
+    $router->get('/api/templates', App\Controllers\OrderTemplateController::class, 'index');
+    $router->post('/api/templates', App\Controllers\OrderTemplateController::class, 'store');
+    $router->put('/api/templates/{slug}', App\Controllers\OrderTemplateController::class, 'update');
+    $router->delete('/api/templates/{slug}', App\Controllers\OrderTemplateController::class, 'destroy');
+    $router->post('/api/templates/{slug}/media', App\Controllers\OrderTemplateController::class, 'uploadMedia');
+    $router->delete('/api/templates/{slug}/media', App\Controllers\OrderTemplateController::class, 'deleteMedia');
 
     // --- Companies ---
     $router->get('/api/companies/me', App\Controllers\CompanyController::class, 'me');
@@ -74,15 +94,17 @@ $router->group('', [Auth::class], function ($router) {
     $router->post('/api/companies/{id}/shops', App\Controllers\CompanyController::class, 'addShop');
     $router->delete('/api/companies/{id}/shops/{shop_id}', App\Controllers\CompanyController::class, 'removeShop');
 
+    // --- Media Upload ---
+    $router->post('/api/media/upload', App\Controllers\MediaController::class, 'upload');
+    $router->delete('/api/media/{reference}', App\Controllers\MediaController::class, 'destroy');
+
     // --- Auth ---
     $router->post('/api/auth/logout', App\Controllers\AuthController::class, 'logout');
 
     // --- Maps (proxy cache Google Maps) ---
-    $router->get('/api/maps/autocomplete', App\Controllers\MapsController::class, 'autocomplete');
     $router->get('/api/maps/geocode', App\Controllers\MapsController::class, 'geocode');
     $router->get('/api/maps/reverse-geocode', App\Controllers\MapsController::class, 'reverseGeocode');
     $router->get('/api/maps/directions', App\Controllers\MapsController::class, 'directions');
-    $router->get('/api/maps/place-details', App\Controllers\MapsController::class, 'placeDetails');
 
     // --- Pricing Calculator ---
     $router->post('/api/pricing/calculate', App\Controllers\PricingController::class, 'calculatePrice');
@@ -103,6 +125,12 @@ $router->group('', [Auth::class], function ($router) {
     $router->put('/api/addresses/{id}', App\Controllers\AddressController::class, 'update');
     $router->delete('/api/addresses/{id}', App\Controllers\AddressController::class, 'destroy');
 
+    // --- Carts ---
+    $router->get('/api/carts', App\Controllers\CartController::class, 'index');
+    $router->post('/api/carts', App\Controllers\CartController::class, 'store');
+    $router->get('/api/carts/{reference}', App\Controllers\CartController::class, 'show');
+    $router->post('/api/carts/{reference}/close', App\Controllers\CartController::class, 'close');
+
     // --- Orders ---
     $router->get('/api/orders', App\Controllers\OrderController::class, 'index');
     $router->post('/api/orders', App\Controllers\OrderController::class, 'store');
@@ -117,14 +145,30 @@ $router->group('', [Auth::class], function ($router) {
     $router->put('/api/orders/{reference}/cancel', App\Controllers\OrderController::class, 'cancel');
     $router->get('/api/orders/{reference}/tracking', App\Controllers\OrderController::class, 'tracking');
 
+    // --- Order Media ---
+    $router->get('/api/orders/{reference}/media', App\Controllers\OrderMediaController::class, 'index');
+    $router->post('/api/orders/{reference}/media', App\Controllers\OrderMediaController::class, 'upload');
+    $router->delete('/api/orders/{reference}/media/{id}', App\Controllers\OrderMediaController::class, 'destroy');
+
     // --- Order Ratings ---
     $router->post('/api/orders/{reference}/rating', App\Controllers\RatingController::class, 'store');
+
+    // --- Dispatching / Affrètement ---
+    $router->get('/api/dispatch/pool',                    App\Controllers\DispatcherController::class, 'pool');
+    $router->get('/api/dispatch/orders/mine',             App\Controllers\DispatcherController::class, 'myClaimed');
+    $router->post('/api/dispatch/orders/{id}/claim',      App\Controllers\DispatcherController::class, 'claim');
+    $router->post('/api/dispatch/orders/{id}/release',    App\Controllers\DispatcherController::class, 'release');
+    $router->post('/api/dispatch/orders/{id}/assign',     App\Controllers\DispatcherController::class, 'assign');
+    $router->patch('/api/dispatch/orders/{id}/notes',     App\Controllers\DispatcherController::class, 'updateNotes');
+    $router->get('/api/dispatch/livreurs',                App\Controllers\DispatcherController::class, 'livreurs');
+    $router->get('/api/dispatch/companies',               App\Controllers\DispatcherController::class, 'companies');
 
     // --- Shops (owner management) ---
     $router->post('/api/shops', App\Controllers\ShopController::class, 'store');
     $router->put('/api/shops/{id}', App\Controllers\ShopController::class, 'update');
     $router->get('/api/shops/my', App\Controllers\ShopController::class, 'myShops');
     $router->put('/api/shops/{id}/approve', App\Controllers\ShopController::class, 'approve');
+    $router->put('/api/shops/{id}/feature', App\Controllers\ShopController::class, 'feature');
 
     // --- Livreur ---
     $router->post('/api/livreur/register', App\Controllers\LivreurController::class, 'register');
@@ -137,6 +181,29 @@ $router->group('', [Auth::class], function ($router) {
 
     // --- Livreur Ratings ---
     $router->get('/api/livreur/{livreur_id}/ratings', App\Controllers\RatingController::class, 'livreurRatings');
+
+    // --- Push Notifications (PWA) ---
+    $router->post('/api/push/subscribe', App\Controllers\PushController::class, 'subscribe');
+    $router->delete('/api/push/unsubscribe', App\Controllers\PushController::class, 'unsubscribe');
+
+    // --- Support Tickets ---
+    $router->post('/api/support/tickets', App\Controllers\SupportController::class, 'store');
+    $router->get('/api/support/tickets', App\Controllers\SupportController::class, 'index');
+    $router->get('/api/support/tickets/{reference}', App\Controllers\SupportController::class, 'show');
+    $router->post('/api/support/tickets/{reference}/messages', App\Controllers\SupportController::class, 'addMessage');
+
+    // --- Admin: Support ---
+    $router->get('/api/admin/support/tickets', App\Controllers\SupportController::class, 'adminIndex');
+    $router->put('/api/admin/support/tickets/{reference}/status', App\Controllers\SupportController::class, 'updateStatus');
+    $router->put('/api/admin/support/tickets/{reference}/assign', App\Controllers\SupportController::class, 'assign');
+
+    // --- Wallet ---
+    $router->get('/api/wallet', App\Controllers\WalletController::class, 'balance');
+    $router->get('/api/wallet/transactions', App\Controllers\WalletController::class, 'transactions');
+
+    // --- Admin: Wallet management ---
+    $router->post('/api/admin/wallet/top-up', App\Controllers\WalletController::class, 'topUp');
+    $router->get('/api/admin/wallet/{user_id}', App\Controllers\WalletController::class, 'adminShow');
 
     // --- Notifications ---
     $router->get('/api/notifications', App\Controllers\NotificationController::class, 'index');

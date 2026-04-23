@@ -203,12 +203,12 @@ class DeveloperController extends Controller
             $data['pickup_lng']           = $request->input('pickup_lng');
             $data['pickup_contact_name']  = $request->input('pickup_contact_name');
             $data['pickup_contact_phone'] = $request->input('pickup_contact_phone');
-            $data['package_description']  = $request->input('package_description');
+            $data['package_description']  = $request->input('package_description', null);
             $data['package_size']         = $request->input('package_size');
             $data['package_weight_kg']    = $request->input('package_weight_kg');
         }
 
-        $data['package_value'] = (int) $request->input('package_value', 0);
+        $data['package_value'] = (int) $request->input('package_value', 0); // Défaut: 0
 
         // Calculate distance & price
         $distanceKm = (float) $request->input('distance_km', 0);

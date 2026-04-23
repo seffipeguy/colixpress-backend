@@ -130,8 +130,9 @@ class ShopController extends Controller
             'name'              => $request->input('name'),
             'short_description' => $request->input('short_description'),
             'description'       => $request->input('description'),
-            'website_url'       => $request->input('website_url'),
-            'permissions'       => json_encode($request->input('permissions', [])),
+            'website_url'          => $request->input('website_url'),
+            'product_url_pattern'  => $request->input('product_url_pattern'),
+            'permissions'          => json_encode($request->input('permissions', [])),
             'address'           => $request->input('address'),
             'latitude'          => $request->input('latitude'),
             'longitude'         => $request->input('longitude'),
@@ -178,11 +179,12 @@ class ShopController extends Controller
         }
 
         $allowed = [
-            'name', 'short_description', 'description', 'website_url', 
-            'address', 'latitude', 'longitude', 'city', 'quarter', 
+            'name', 'short_description', 'description', 'website_url',
+            'product_url_pattern',
+            'address', 'latitude', 'longitude', 'city', 'quarter',
             'phone', 'opening_time', 'closing_time'
         ];
-        
+
         $data = [];
         foreach ($allowed as $field) {
             if ($request->has($field)) {
@@ -264,4 +266,27 @@ class ShopController extends Controller
         $model->update((int) $shop['id'], ['is_approved' => 1]);
         Response::success(null, 'Shop approved');
     }
+
+    /**
+     * PUT /api/shops/{id}/feature — Admin met en avant / retire une boutique
+     */
+    public function feature(Request $request): void
+    {
+        if (!Auth::isAdmin()) {
+            Response::forbidden();
+        }
+
+        $model = new Shop();
+        $shop  = $model->find((int) $request->param('id'));
+
+        if (!$shop) {
+            Response::notFound('Shop not found');
+        }
+
+        $featured = (int) (bool) $request->input('is_featured', 1);
+        $model->update((int) $shop['id'], ['is_featured' => $featured]);
+        $msg = $featured ? 'Boutique mise en avant' : 'Boutique retirée de la mise en avant';
+        Response::success(null, $msg);
+    }
+
 }

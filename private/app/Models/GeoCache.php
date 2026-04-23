@@ -11,7 +11,7 @@ class GeoCache extends Model
 
     // Durées de cache par type (en jours)
     private const CACHE_DURATIONS = [
-        'autocomplete'    => 30,
+        'autocomplete'    => 1461, // 4 ans
         'geocode'         => 90,
         'reverse_geocode' => 90,
         'directions'      => 3,

@@ -7,7 +7,7 @@ use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
 use App\Models\GeoCache;
-use App\Services\GoogleMapsService;
+use App\Services\GeoService;
 
 class MapsController extends Controller
 {
@@ -25,7 +25,7 @@ class MapsController extends Controller
         $location = $request->query('location');
         $radius   = $request->query('radius') ? (int) $request->query('radius') : null;
 
-        $service = new GoogleMapsService();
+        $service = new GeoService();
         $data = $service->autocomplete($input, $country, $location, $radius);
 
         if (isset($data['error'])) {
@@ -50,7 +50,7 @@ class MapsController extends Controller
 
         $country = $request->query('country');
 
-        $service = new GoogleMapsService();
+        $service = new GeoService();
         $data = $service->geocode($address, $country);
 
         if (isset($data['error'])) {
@@ -75,7 +75,7 @@ class MapsController extends Controller
             Response::error('Les paramètres lat et lng sont requis', 422);
         }
 
-        $service = new GoogleMapsService();
+        $service = new GeoService();
         $data = $service->reverseGeocode((float) $lat, (float) $lng);
 
         if (isset($data['error'])) {
@@ -102,7 +102,7 @@ class MapsController extends Controller
             Response::error('Les paramètres origin_lat, origin_lng, dest_lat, dest_lng sont requis', 422);
         }
 
-        $service = new GoogleMapsService();
+        $service = new GeoService();
         $data = $service->directions((float) $originLat, (float) $originLng, (float) $destLat, (float) $destLng);
 
         if (isset($data['error'])) {
@@ -125,7 +125,7 @@ class MapsController extends Controller
             Response::error('Le paramètre place_id est requis', 422);
         }
 
-        $service = new GoogleMapsService();
+        $service = new GeoService();
         $data = $service->placeDetails($placeId);
 
         if (isset($data['error'])) {

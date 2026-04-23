@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\GeoCache;
 use App\Models\Setting;
 
-class GoogleMapsService
+class GeoService
 {
     private string $apiKey;
     private string $serperApiKey;
@@ -27,6 +27,9 @@ class GoogleMapsService
      */
     public function autocomplete(string $input, ?string $country = null, ?string $location = null, ?int $radius = null): array
     {
+        // Normaliser le code pays en minuscule
+        $country = $country ? strtolower(trim($country)) : null;
+
         // Si Serper API Key n'est pas configurée, erreur explicite
         if (empty($this->serperApiKey)) {
             return ['source' => 'server', 'results' => [], 'error' => 'Serper API Key is missing in settings.'];
@@ -58,12 +61,31 @@ class GoogleMapsService
     private function autocompleteSerper(string $input, ?string $country = null, string $cacheKey): array
     {
         $targetCountry = $country ? strtolower($country) : $this->defaultCountry;
-        
-        $params = [
-            'q'  => $input,
-            'gl' => $targetCountry, // Pays cible
-            'hl' => 'fr' // Langue française
+
+        // Location bias : coordonnées du centre du pays cible
+        $locationBias = [
+            'cm' => ['lat' => 3.848, 'lng' => 11.502],
+            'sn' => ['lat' => 14.497, 'lng' => -14.452],
+            'ci' => ['lat' => 7.540, 'lng' => -5.547],
+            'ga' => ['lat' => -0.803, 'lng' => 11.609],
+            'fr' => ['lat' => 46.227, 'lng' => 2.213],
         ];
+
+        $bias = $locationBias[$targetCountry] ?? null;
+
+        // Enrichir la requête avec le pays pour guider Serper
+        $countryLabel = ucfirst($countryNames[$targetCountry][0] ?? $targetCountry);
+        $enrichedQuery = $input . ' ' . $countryLabel;
+
+        $params = [
+            'q'  => $enrichedQuery,
+            'gl' => $targetCountry,
+            'hl' => 'fr',
+        ];
+
+        if ($bias) {
+            $params['location'] = $bias['lat'] . ',' . $bias['lng'];
+        }
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, 'https://google.serper.dev/places');
@@ -74,7 +96,7 @@ class GoogleMapsService
             'Content-Type: application/json'
         ]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -85,9 +107,8 @@ class GoogleMapsService
 
         $data = json_decode($response, true);
         $places = $data['places'] ?? [];
-        
+
         $results = array_map(function ($p) {
-            // Encoder les données essentielles dans un faux place_id
             $payload = [
                 'lat'  => $p['latitude'] ?? 0,
                 'lng'  => $p['longitude'] ?? 0,
@@ -106,7 +127,7 @@ class GoogleMapsService
                 'latitude'           => $p['latitude'] ?? null,
                 'longitude'          => $p['longitude'] ?? null,
             ];
-        }, $places);
+        }, array_values($places));
 
         // Mise en cache
         $this->cache->store('autocomplete', $cacheKey, $input, $results);

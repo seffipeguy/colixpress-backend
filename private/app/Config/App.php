@@ -4,6 +4,7 @@ define('APP_NAME', 'ColiXpress API');
 define('APP_VERSION', '1.0.0');
 define('APP_ENV', 'development'); // development | production
 define('APP_DEBUG', true);
+define('APP_URL', (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
 
 // Database
 define('DB_HOST', 'localhost');
@@ -20,7 +21,7 @@ define('OTP_LENGTH', 4);
 
 // Upload
 define('UPLOAD_DIR', PUBLIC_PATH . '/uploads');
-define('UPLOAD_URL', '/uploads');
+define('UPLOAD_URL', APP_URL . '/uploads');
 define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); // 5MB
 
 // Pagination

@@ -42,6 +42,11 @@ class Router
         $this->addRoute('DELETE', $path, $controller, $method);
     }
 
+    public function patch(string $path, string $controller, string $method): void
+    {
+        $this->addRoute('PATCH', $path, $controller, $method);
+    }
+
     private function addRoute(string $httpMethod, string $path, string $controller, string $method): void
     {
         $fullPath = $this->prefix . $path;

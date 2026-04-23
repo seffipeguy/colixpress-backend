@@ -6,12 +6,15 @@ use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Auth;
+use App\Models\MediaUpload;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderMedia;
 use App\Models\OrderStatusHistory;
 use App\Models\LivreurProfile;
 use App\Models\Notification;
 use App\Models\Shop;
+use App\Services\WalletService;
 
 class OrderController extends Controller
 {
@@ -51,12 +54,9 @@ class OrderController extends Controller
         $historyModel = new OrderStatusHistory();
         $order['status_history'] = $historyModel->getByOrder($order['id']);
 
-        // Remove sensitive fields if necessary, but user requested "all infos"
-        // We will remove only strictly internal/sensitive fields like passwords or unrelated IDs if present in joined tables
-        // Since findWithDetailsByReference joins with users table, we should be careful not to expose password hashes if they were selected (they are usually not in findWithDetailsBy unless explicitly selected or * is used on users table)
-        // Looking at Order::findWithDetailsBy, it selects:
-        // o.*, uc.first_name, uc.last_name, uc.phone, ul.first_name, ul.last_name, ul.phone, s.name
-        // So no passwords are exposed.
+        // Include media
+        $mediaModel = new OrderMedia();
+        $order['media'] = $mediaModel->getByOrder((int) $order['id']);
 
         Response::success($order);
     }
@@ -115,12 +115,29 @@ class OrderController extends Controller
             $data['pickup_lng']           = $request->input('pickup_lng');
             $data['pickup_contact_name']  = $request->input('pickup_contact_name');
             $data['pickup_contact_phone'] = $request->input('pickup_contact_phone');
-            $data['package_description']  = $request->input('package_description');
+            $data['package_description']  = $request->input('package_description', null);
             $data['package_size']         = $request->input('package_size');
             $data['package_weight_kg']    = $request->input('package_weight_kg');
         }
 
-        $data['package_value'] = (int) $request->input('package_value', 0);
+        $data['package_value'] = (int) $request->input('package_value', 0); // Défaut: 0
+
+        // Rattacher à un panier si cart_reference fourni
+        $cartReference = $request->input('cart_reference');
+        if ($cartReference) {
+            $cartModel = new \App\Models\OrderCart();
+            $cart      = $cartModel->findByReference($cartReference);
+            if (!$cart) {
+                Response::error('Panier introuvable', 404);
+            }
+            if ((int) $cart['client_id'] !== $this->userId()) {
+                Response::forbidden();
+            }
+            if ($cart['status'] === 'closed') {
+                Response::error('Ce panier est fermé, impossible d\'y ajouter une commande', 422);
+            }
+            $data['cart_id'] = (int) $cart['id'];
+        }
 
         // Calculate Maps API cost from frontend usage
         $mapsUsage = $request->input('maps_usage', []);
@@ -149,6 +166,18 @@ class OrderController extends Controller
         $itemsTotal = 0;
         $items = $request->input('items', []);
 
+        // Débit wallet si paiement par portefeuille
+        if (($data['payment_method'] ?? 'cash') === 'wallet' && $data['price'] > 0) {
+            $walletService = new WalletService();
+            $walletService->debit(
+                $this->userId(),
+                (int) $data['price'],
+                'order_payment',
+                'Paiement commande ' . $data['reference'],
+                $data['reference']
+            );
+        }
+
         $orderId = $orderModel->create($data);
 
         // Create order items for shop orders
@@ -174,6 +203,30 @@ class OrderController extends Controller
             'changed_by' => $this->userId(),
         ]);
 
+        // Attacher les médias référencés
+        $mediaRefs = $request->input('media_references', []);
+        if (!empty($mediaRefs) && is_array($mediaRefs)) {
+            $mediaUploadModel = new MediaUpload();
+            $resolved = $mediaUploadModel->resolveReferences($mediaRefs, $this->userId());
+            if (isset($resolved['error'])) {
+                Response::error($resolved['error'], 422);
+            }
+            $mediaModel = new OrderMedia();
+            foreach ($resolved as $m) {
+                $mediaModel->create([
+                    'order_id'    => $orderId,
+                    'file_name'   => $m['file_name'],
+                    'file_path'   => $m['file_path'],
+                    'file_url'    => $m['file_url'],
+                    'file_type'   => $m['file_type'],
+                    'mime_type'   => $m['mime_type'],
+                    'file_size'   => $m['file_size'],
+                    'uploaded_by' => $m['uploaded_by'],
+                ]);
+                $mediaUploadModel->markLinked((int) $m['id'], 'order', $orderId);
+            }
+        }
+
         $order = $orderModel->findWithDetails($orderId);
 
         // Include items if shop order
@@ -181,6 +234,10 @@ class OrderController extends Controller
             $orderItemModel = $orderItemModel ?? new OrderItem();
             $order['items'] = $orderItemModel->getByOrder($orderId);
         }
+
+        // Include media
+        $mediaModel = $mediaModel ?? new OrderMedia();
+        $order['media'] = $mediaModel->getByOrder($orderId);
 
         Response::success($order, 'Order created', 201);
     }
@@ -200,6 +257,12 @@ class OrderController extends Controller
         } else {
             $result = $orderModel->getByClient($this->userId(), $request->page(), $request->perPage(), $status);
         }
+
+        $mediaModel = new OrderMedia();
+        $result['data'] = array_map(function ($order) use ($mediaModel) {
+            $order['media'] = $mediaModel->getByOrder((int) $order['id']);
+            return $order;
+        }, $result['data']);
 
         Response::paginated($result['data'], $result['total'], $request->page(), $request->perPage());
     }
@@ -243,6 +306,10 @@ class OrderController extends Controller
             $orderItemModel = new OrderItem();
             $order['items'] = $orderItemModel->getByOrder((int) $order['id']);
         }
+
+        // Include media
+        $mediaModel = new OrderMedia();
+        $order['media'] = $mediaModel->getByOrder((int) $order['id']);
 
         Response::success($order);
     }
@@ -456,6 +523,18 @@ class OrderController extends Controller
         $reason = $request->input('cancellation_reason', 'Cancelled by client');
         $orderModel->update((int) $order['id'], ['cancellation_reason' => $reason]);
         $orderModel->updateStatus((int) $order['id'], 'cancelled', $this->userId(), $reason);
+
+        // Remboursement automatique si paiement par wallet
+        if ($order['payment_method'] === 'wallet' && (int) $order['price'] > 0) {
+            $walletService = new WalletService();
+            $walletService->credit(
+                (int) $order['client_id'],
+                (int) $order['price'],
+                'refund',
+                'Remboursement annulation commande ' . $order['reference'],
+                $order['reference']
+            );
+        }
 
         // Notify livreur if assigned
         if ($order['livreur_id']) {

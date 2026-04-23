@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Core\Model;
+use App\Services\PushNotificationService;
 use PDO;
 
 class Notification extends Model
@@ -48,5 +49,13 @@ class Notification extends Model
             'type'    => $type,
             'data'    => $data ? json_encode($data) : null,
         ]);
+
+        // Envoi push PWA en parallèle (non bloquant si échec)
+        try {
+            $push = new PushNotificationService();
+            $push->sendToUser($userId, $title, $message, $data ?? []);
+        } catch (\Throwable $e) {
+            error_log('[PushNotification] Erreur: ' . $e->getMessage());
+        }
     }
 }

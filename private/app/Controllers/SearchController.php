@@ -23,11 +23,16 @@ class SearchController extends Controller
             Response::error('Query parameter "q" is required', 400);
         }
 
+        $userLat = $request->query('lat');
+        $userLon = $request->query('lon');
+
         $shopId = $request->query('shop_id');
         $siteFilter = '';
+        $shops = [];
+
+        $shopModel = new Shop();
 
         if ($shopId) {
-            $shopModel = new Shop();
             $shop = $shopModel->find((int) $shopId);
             
             if (!$shop) {
@@ -36,17 +41,17 @@ class SearchController extends Controller
 
             if (!empty($shop['website_url'])) {
                 $siteFilter = 'site:' . $shop['website_url'];
+                $shops[] = $shop;
             } else {
                 Response::error('This shop does not have a website URL configured', 400);
             }
         } else {
             // No shop_id provided: Search across ALL active/approved shops
-            $shopModel = new Shop();
-            $urls = $shopModel->getAllShopUrls();
+            $shops = $shopModel->getAllShopUrls(); // Now returns array of shops with id, website_url, lat, lon
 
-            if (!empty($urls)) {
+            if (!empty($shops)) {
                 // Construct query: site:url1 OR site:url2 OR ...
-                $sites = array_map(fn($url) => 'site:' . $url, $urls);
+                $sites = array_map(fn($s) => 'site:' . $s['website_url'], $shops);
                 $siteFilter = implode(' OR ', $sites);
             }
         }
@@ -62,7 +67,80 @@ class SearchController extends Controller
             Response::json($result, $result['status_code'] ?? 500);
         }
 
+        // Enrich results with shop_id and distance
+        if (isset($result['items'])) {
+            foreach ($result['items'] as &$item) {
+                $matchedShop = $this->matchShopByUrl($item['link'], $shops);
+                
+                if ($matchedShop) {
+                    // Inject full shop details
+                    $item['shop'] = $matchedShop;
+                    
+                    // Remove sensitive or unnecessary fields if needed, but user asked for "all infos"
+                    // Optionally calculate distance and add it to the shop object or root item
+                    if ($userLat && $userLon && !empty($matchedShop['latitude']) && !empty($matchedShop['longitude'])) {
+                        $distance = $this->calculateDistance(
+                            (float) $userLat,
+                            (float) $userLon,
+                            (float) $matchedShop['latitude'],
+                            (float) $matchedShop['longitude']
+                        );
+                        $item['shop']['distance_km'] = $distance;
+                        $item['distance_km'] = $distance; // Keep it at root too for convenience
+                    } else {
+                        $item['shop']['distance_km'] = null;
+                        $item['distance_km'] = null;
+                    }
+                } else {
+                    // Should theoretically not happen due to site: filter
+                    $item['shop'] = null;
+                    $item['distance_km'] = null;
+                }
+            }
+        }
+
         Response::success($result);
+    }
+
+    private function matchShopByUrl(string $link, array $shops): ?array
+    {
+        $parsedLink = parse_url($link);
+        if (!isset($parsedLink['host'])) {
+            return null;
+        }
+        $linkHost = str_replace('www.', '', $parsedLink['host']);
+
+        foreach ($shops as $shop) {
+            $shopUrl = $shop['website_url'];
+            $parsedShopUrl = parse_url($shopUrl);
+            if (!isset($parsedShopUrl['host'])) continue;
+            
+            $shopHost = str_replace('www.', '', $parsedShopUrl['host']);
+
+            // Check if link host contains shop host or vice versa
+            if (strpos($linkHost, $shopHost) !== false || strpos($shopHost, $linkHost) !== false) {
+                return $shop;
+            }
+        }
+        return null;
+    }
+
+    private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6371; // Radius of the earth in km
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        $distance = $earthRadius * $c;
+
+        return round($distance, 2);
     }
 
     private function serperSearch(string $query): array

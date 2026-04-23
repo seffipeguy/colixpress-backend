@@ -28,6 +28,8 @@
 17. [Compagnies](#17-compagnies)
 18. [API Développeur](#18-api-développeur)
 
+20. [Order Templates](#20-order-templates)
+
 ---
 
 ## 1. Généralités
@@ -1051,6 +1053,58 @@ Rechercher les boutiques à proximité d'une position GPS, triées par distance 
   ]
 }
 ```
+
+---
+
+### `GET /api/search/shops` 🟢 Public
+
+Recherche de produits dans les sites web des boutiques partenaires via Google (Serper.dev).
+
+**Query params :**
+- `q` *(requis)* : Terme de recherche (ex: `iphone 14`)
+- `shop_id` *(optionnel)* : ID d'une boutique spécifique pour restreindre la recherche.
+- `lat` *(optionnel)* : Latitude de l'utilisateur (pour le calcul de distance).
+- `lon` *(optionnel)* : Longitude de l'utilisateur.
+
+**Réponse (200) :**
+```json
+{
+  "success": true,
+  "data": {
+    "searchParameters": {
+      "q": "iphone 14 site:monsite.com ...",
+      "gl": "cm",
+      "type": "search",
+      "engine": "google"
+    },
+    "items": [
+      {
+        "title": "iPhone 14 - Glotelho Cameroun",
+        "link": "https://glotelho.cm/iphone-14",
+        "snippet": "Achetez l'iPhone 14 au meilleur prix...",
+        "date": "...",
+        "position": 1,
+        "shop": {
+          "id": 12,
+          "name": "Glotelho",
+          "description": "Vente en ligne...",
+          "address": "Rue Drouot, Akwa",
+          "latitude": 4.051056,
+          "longitude": 9.767868,
+          "phone": "+237 6...",
+          "website_url": "https://glotelho.cm",
+          "logo_url": "...",
+          "distance_km": 2.5
+        },
+        "distance_km": 2.5
+      },
+      ...
+    ]
+  }
+}
+```
+
+> **Note :** `shop_id` et `distance_km` sont ajoutés si le lien du résultat correspond au site web d'une boutique enregistrée.
 
 ---
 
@@ -2773,3 +2827,107 @@ Règles de tarification actives.
 | 100 | GET | `/api/v1/shops/{id}` | Détail boutique |
 | 101 | GET | `/api/v1/countries` | Pays |
 | 102 | GET | `/api/v1/pricing` | Tarification |
+
+---
+
+## 20. Order Templates
+
+Cette section permet de gérer les modèles de commande ("Order Templates") pour faciliter la création rapide de commandes via des liens partagés.
+
+### Créer un template
+
+`POST /api/templates`
+
+Permet à un utilisateur authentifié de créer un modèle de commande.
+
+**Paramètres (JSON):**
+
+| Champ | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `name` | string | Oui | Nom du modèle (ex: "Retrait Boutique") |
+| `type` | string | Non | Type de template: `pickup_prefilled`, `dropoff_prefilled`, `custom` (défaut: `custom`) |
+| `default_values` | object | Oui | Objet JSON contenant les valeurs pré-remplies (voir structure Order) |
+| `required_fields` | array | Non | Liste des champs que l'utilisateur devra remplir (informatif) |
+
+**Exemple de body:**
+
+```json
+{
+  "name": "Retrait Boutique Akwa",
+  "type": "pickup_prefilled",
+  "default_values": {
+    "pickup_address": "Boutique X, Akwa",
+    "pickup_lat": 4.05,
+    "pickup_lng": 9.70,
+    "pickup_contact_name": "M. Vendeur",
+    "pickup_contact_phone": "699999999"
+  },
+  "required_fields": ["dropoff_address", "dropoff_contact_phone"]
+}
+```
+
+**Réponse (201 Created):**
+
+```json
+{
+  "success": true,
+  "message": "Template created successfully",
+  "data": {
+    "id": 123,
+    "slug": "abc123xy",
+    ...
+  },
+  "link": "https://colixpress.com/t/abc123xy"
+}
+```
+
+### Lister mes templates
+
+`GET /api/templates`
+
+Retourne la liste des modèles créés par l'utilisateur connecté.
+
+### Voir un template (Public)
+
+`GET /api/templates/{slug}`
+
+Permet à n'importe qui (sans authentification) de voir les détails d'un template via son slug. Utile pour le Frontend pour afficher le formulaire pré-rempli.
+
+**Réponse:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "name": "Retrait Boutique Akwa",
+    "slug": "abc123xy",
+    "type": "pickup_prefilled",
+    "default_values": { ... },
+    "required_fields": [ ... ]
+  }
+}
+```
+
+### Instancier une commande (Public)
+
+`POST /api/templates/{slug}/instantiate`
+
+Crée immédiatement une commande **Brouillon (Draft)** à partir du template.
+
+**Paramètres:** Aucun (body vide `{}` accepté).
+
+**Réponse (201 Created):**
+
+```json
+{
+  "success": true,
+  "message": "Order initiated successfully",
+  "data": {
+    "order_reference": "COL-2026-NEW123",
+    "order_id": 456,
+    "redirect_url": "https://colixpress.com/order/COL-2026-NEW123/complete"
+  }
+}
+```
+
+Le Frontend doit ensuite rediriger l'utilisateur vers `redirect_url` pour qu'il complète les informations manquantes (ex: adresse de livraison) et valide la commande.
