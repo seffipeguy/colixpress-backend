@@ -111,6 +111,8 @@ $router->group('', [Auth::class], function ($router) {
 
     $router->get('/api/auth/me', App\Controllers\AuthController::class, 'me');
     $router->put('/api/auth/password', App\Controllers\AuthController::class, 'changePassword');
+    $router->post('/api/auth/request-verification', App\Controllers\AuthController::class, 'requestVerification');
+    $router->post('/api/auth/confirm-verification', App\Controllers\AuthController::class, 'confirmVerification');
 
     // --- User Profile ---
     $router->get('/api/user/profile', App\Controllers\UserController::class, 'profile');

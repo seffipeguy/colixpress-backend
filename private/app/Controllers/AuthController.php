@@ -296,4 +296,81 @@ class AuthController extends Controller
         $countryModel = new Country();
         Response::success($countryModel->getActive());
     }
+
+    /**
+     * POST /api/auth/request-verification
+     * Header: Authorization: Bearer <token>
+     * Envoie un OTP sur le numéro du compte connecté pour vérifier le compte.
+     */
+    public function requestVerification(Request $request): void
+    {
+        $userModel = new User();
+        $user      = $userModel->find($this->userId());
+
+        if (!$user) {
+            Response::notFound('Utilisateur introuvable');
+        }
+
+        if ($user['is_verified']) {
+            Response::error('Ce compte est déjà vérifié', 422);
+        }
+
+        $countryModel = new Country();
+        $country      = $countryModel->find((int) $user['country_id']);
+
+        $otpModel = new OtpCode();
+        $code     = $otpModel->generate((int) $user['country_id'], $user['phone']);
+
+        $phoneE164 = SmsService::formatE164($country['dial_code'], $user['phone']);
+        $sms = new SmsService();
+        if (SMS_ENABLED && !$sms->sendOtp($phoneE164)) {
+            Response::error('Échec de l\'envoi du SMS, veuillez réessayer', 500);
+        }
+
+        $responseData = [
+            'message'    => 'OTP envoyé sur votre numéro',
+            'expires_in' => OTP_EXPIRY_MINUTES . ' minutes',
+        ];
+
+        if (!SMS_ENABLED) {
+            $responseData['otp_code'] = $code;
+        }
+
+        Response::success($responseData, 'OTP envoyé');
+    }
+
+    /**
+     * POST /api/auth/confirm-verification
+     * Header: Authorization: Bearer <token>
+     * Body: { "code": "1234" }
+     * Valide l'OTP et marque le compte comme vérifié.
+     */
+    public function confirmVerification(Request $request): void
+    {
+        $request->validate(['code']);
+
+        $userModel = new User();
+        $user      = $userModel->find($this->userId());
+
+        if (!$user) {
+            Response::notFound('Utilisateur introuvable');
+        }
+
+        if ($user['is_verified']) {
+            Response::error('Ce compte est déjà vérifié', 422);
+        }
+
+        $code     = trim($request->input('code'));
+        $otpModel = new OtpCode();
+
+        if (!$otpModel->verify((int) $user['country_id'], $user['phone'], $code)) {
+            Response::error('Code OTP invalide ou expiré', 401);
+        }
+
+        $userModel->update($this->userId(), ['is_verified' => 1]);
+
+        Response::success([
+            'is_verified' => true,
+        ], 'Compte vérifié avec succès');
+    }
 }
