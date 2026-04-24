@@ -10,6 +10,28 @@ use App\Models\OrderCart;
 class CartController extends Controller
 {
     /**
+     * GET /api/carts/current
+     * Retourne le dernier panier ouvert de l'utilisateur connecté
+     */
+    public function current(Request $request): void
+    {
+        $cartModel = new OrderCart();
+        $cart      = $cartModel->getOpenByClient($this->userId());
+
+        if (!$cart) {
+            Response::notFound('Aucun panier ouvert');
+        }
+
+        $stats                = $cartModel->getOrdersWithStats((int) $cart['id']);
+        $cart['orders']       = $stats['orders'];
+        $cart['total_orders'] = $stats['total_orders'];
+        $cart['total_price']  = $stats['total_price'];
+        $cart['status_count'] = $stats['status_count'];
+
+        Response::success($cart);
+    }
+
+    /**
      * GET /api/carts
      */
     public function index(Request $request): void

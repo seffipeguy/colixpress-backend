@@ -41,6 +41,19 @@ class OrderCart extends Model
         return ['data' => $data, 'total' => $total];
     }
 
+    public function getOpenByClient(int $clientId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT * FROM {$this->table}
+            WHERE client_id = :cid AND status = 'open'
+            ORDER BY created_at DESC
+            LIMIT 1
+        ");
+        $stmt->execute(['cid' => $clientId]);
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
     public function getOrdersWithStats(int $cartId): array
     {
         $stmt = $this->db->prepare("

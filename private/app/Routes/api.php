@@ -128,6 +128,7 @@ $router->group('', [Auth::class], function ($router) {
     // --- Carts ---
     $router->get('/api/carts', App\Controllers\CartController::class, 'index');
     $router->post('/api/carts', App\Controllers\CartController::class, 'store');
+    $router->get('/api/carts/current', App\Controllers\CartController::class, 'current');
     $router->get('/api/carts/{reference}', App\Controllers\CartController::class, 'show');
     $router->post('/api/carts/{reference}/close', App\Controllers\CartController::class, 'close');
 
