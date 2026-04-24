@@ -14,6 +14,7 @@ class MediaUpload extends Model
         'image/gif'   => 'gif',
         'image/webp'  => 'webp',
         'video/mp4'   => 'mp4',
+        'video/webm'  => 'webm',
         'audio/webm'  => 'webm',
         'audio/mp4'   => 'm4a',
         'audio/mpeg'  => 'mp3',
