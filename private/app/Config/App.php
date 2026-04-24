@@ -24,6 +24,12 @@ define('UPLOAD_DIR', PUBLIC_PATH . '/uploads');
 define('UPLOAD_URL', APP_URL . '/uploads');
 define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); // 5MB
 
+// Twilio Verify (SMS OTP) — valeurs dans /home/legeekoconsulting/web/api.colixpress.com/.env
+define('TWILIO_ACCOUNT_SID', getenv('TWILIO_ACCOUNT_SID') ?: '');
+define('TWILIO_AUTH_TOKEN',  getenv('TWILIO_AUTH_TOKEN')  ?: '');
+define('TWILIO_VERIFY_SID',  getenv('TWILIO_VERIFY_SID')  ?: '');
+define('SMS_ENABLED',        getenv('SMS_ENABLED') === 'true');
+
 // Pagination
 define('DEFAULT_PER_PAGE', 20);
 define('MAX_PER_PAGE', 100);

@@ -9,6 +9,7 @@ use App\Core\Auth;
 use App\Models\User;
 use App\Models\OtpCode;
 use App\Models\Country;
+use App\Services\SmsService;
 
 class AuthController extends Controller
 {
@@ -39,15 +40,20 @@ class AuthController extends Controller
         $otpModel = new OtpCode();
         $code = $otpModel->generate($countryId, $phone);
 
-        // In production, send OTP via SMS gateway here
-        // For development, we return the code in response
+        // Envoyer via Twilio Verify si SMS_ENABLED
+        $phoneE164 = SmsService::formatE164($country['dial_code'], $phone);
+        $sms = new SmsService();
+        if (SMS_ENABLED && !$sms->sendOtp($phoneE164)) {
+            Response::error('Échec de l\'envoi du SMS, veuillez réessayer', 500);
+        }
+
         $responseData = [
-            'message'    => 'OTP sent successfully',
+            'message'    => 'OTP envoyé avec succès',
             'expires_in' => OTP_EXPIRY_MINUTES . ' minutes',
         ];
 
-        if (APP_ENV === 'development') {
-            $responseData['otp_code'] = $code; // Remove in production!
+        if (!SMS_ENABLED) {
+            $responseData['otp_code'] = $code;
         }
 
         Response::success($responseData, 'OTP sent');

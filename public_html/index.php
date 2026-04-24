@@ -43,6 +43,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// Load .env file if present (hors webroot, jamais versionné)
+$envFile = BASE_PATH . '/.env';
+if (file_exists($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if ($line[0] === '#' || !str_contains($line, '=')) continue;
+        [$key, $val] = explode('=', $line, 2);
+        putenv(trim($key) . '=' . trim($val));
+    }
+}
+
 // Load configuration
 require_once APP_PATH . '/Config/App.php';
 
