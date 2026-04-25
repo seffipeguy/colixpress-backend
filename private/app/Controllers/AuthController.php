@@ -373,4 +373,41 @@ class AuthController extends Controller
             'is_verified' => true,
         ], 'Compte vérifié avec succès');
     }
+
+    /**
+     * GET /api/auth/check-phone
+     * Query: ?country_id=1&phone=691234567
+     * Vérifie si un numéro de téléphone est déjà inscrit dans le système
+     */
+    public function checkPhone(Request $request): void
+    {
+        $countryId = (int) $request->query('country_id');
+        $phone = trim($request->query('phone'));
+
+        if (!$countryId || !$phone) {
+            Response::error('country_id and phone are required', 422);
+        }
+
+        // Validate country
+        $countryModel = new Country();
+        $country = $countryModel->find($countryId);
+        if (!$country) {
+            Response::error('Invalid country', 422);
+        }
+
+        // Validate phone length
+        if (strlen($phone) !== (int) $country['phone_length']) {
+            Response::error("Phone number must be {$country['phone_length']} digits for {$country['name']}", 422);
+        }
+
+        // Check if user exists
+        $userModel = new User();
+        $user = $userModel->findByPhone($countryId, $phone);
+
+        Response::success([
+            'exists' => $user !== null,
+            'is_verified' => $user ? (bool) $user['is_verified'] : false,
+            'has_password' => $user && !empty($user['password']) ? true : false,
+        ]);
+    }
 }

@@ -496,3 +496,95 @@ INSERT INTO shop_categories (name, sort_order) VALUES
 ('Boulangerie / Patisserie', 6),
 ('Librairie', 7),
 ('Autre', 99);
+
+-- =============================================
+-- PAYMENT SYSTEM (Ajouté 2026-04-25)
+-- =============================================
+
+-- Table: payment_providers
+CREATE TABLE IF NOT EXISTS payment_providers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE COMMENT 'campay, mtn_cm, orange_cm, etc.',
+    name VARCHAR(100) NOT NULL COMMENT 'CamPay, MTN Mobile Money',
+    provider_type ENUM('mobile_money','bank_card','bank_transfer','cash','wallet') DEFAULT 'mobile_money',
+    logo_url VARCHAR(255) NULL,
+    api_base_url VARCHAR(255) NULL,
+    api_version VARCHAR(20) NULL,
+    requires_api_key BOOLEAN DEFAULT 1,
+    api_username TEXT NULL,
+    api_password TEXT NULL,
+    api_token TEXT NULL,
+    webhook_secret TEXT NULL,
+    extra_config JSON NULL,
+    is_active BOOLEAN DEFAULT 1,
+    is_sandbox BOOLEAN DEFAULT 0,
+    min_amount INT DEFAULT 100,
+    max_amount INT DEFAULT 5000000,
+    transaction_fee_percent DECIMAL(5,2) DEFAULT 0,
+    transaction_fee_fixed INT DEFAULT 0,
+    description TEXT NULL,
+    instructions TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_code (code),
+    INDEX idx_active (is_active),
+    INDEX idx_type (provider_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: payment_provider_countries
+CREATE TABLE IF NOT EXISTS payment_provider_countries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    provider_id INT NOT NULL,
+    country_id INT NOT NULL,
+    is_default BOOLEAN DEFAULT 0,
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ppc_provider FOREIGN KEY (provider_id) REFERENCES payment_providers(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ppc_country FOREIGN KEY (country_id) REFERENCES countries(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_provider_country (provider_id, country_id),
+    INDEX idx_country_default (country_id, is_default),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: payment_transactions
+CREATE TABLE IF NOT EXISTS payment_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    reference VARCHAR(50) NOT NULL UNIQUE,
+    order_id INT NULL,
+    provider_id INT NOT NULL,
+    provider_transaction_id VARCHAR(255) NULL,
+    provider_reference VARCHAR(255) NULL,
+    amount INT NOT NULL,
+    currency VARCHAR(3) DEFAULT 'XAF',
+    fee_amount INT DEFAULT 0,
+    net_amount INT GENERATED ALWAYS AS (amount - fee_amount) STORED,
+    customer_phone VARCHAR(20) NOT NULL,
+    customer_name VARCHAR(100) NULL,
+    customer_email VARCHAR(100) NULL,
+    status ENUM('pending','processing','completed','failed','cancelled','refunded') DEFAULT 'pending',
+    payment_method VARCHAR(50) NULL,
+    payment_details JSON NULL,
+    callback_url VARCHAR(255) NULL,
+    return_url VARCHAR(255) NULL,
+    webhook_received_at DATETIME NULL,
+    webhook_data JSON NULL,
+    error_code VARCHAR(50) NULL,
+    error_message TEXT NULL,
+    retry_count INT DEFAULT 0,
+    initiated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME NULL,
+    failed_at DATETIME NULL,
+    refunded_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_pt_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
+    CONSTRAINT fk_pt_provider FOREIGN KEY (provider_id) REFERENCES payment_providers(id),
+    INDEX idx_reference (reference),
+    INDEX idx_order (order_id),
+    INDEX idx_status (status),
+    INDEX idx_provider_tx (provider_transaction_id),
+    INDEX idx_customer_phone (customer_phone),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

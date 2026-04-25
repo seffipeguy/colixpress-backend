@@ -1,0 +1,50 @@
+========================================
+CAMPAY - CONFIGURATION WEBHOOK
+========================================
+
+🔗 URL de rappel (Callback URL) à configurer dans CamPay :
+
+https://api.colixpress.com/api/payment/webhook-test
+
+OU (si le paramètre dynamique fonctionne) :
+https://api.colixpress.com/api/payment/webhook/campay
+
+========================================
+
+📋 Instructions :
+
+1. Connectez-vous à votre compte CamPay
+2. Allez dans les paramètres de votre application
+3. Configurez l'URL de rappel (webhook) avec l'URL ci-dessus
+4. Assurez-vous que la clé webhook est bien configurée :
+   Gc5qBn0H-yKV3CAa3BKKlnC8MO5yu9JqTG7V8YoYwk-8Kc_UF7-7DabMBYyzlA7CtXL4gefr66rmHqYHUHstKw
+
+========================================
+
+🔐 Credentials configurés :
+
+Application ID:
+4CWKe17fXrgyFLIY55bDHfkhmoZ6G5ON__u3jWDh_tAXvctcVcste7nyLyiqZqXb3Ev92TzeQmGIa974n85VxQ
+
+Username:
+n1nmmcgPKwtEAL2o9YZuC1HI3Ujh5ZGkJEDCP_p-9E7Leux-mxHATTChoBnmC-Ua4Q2DtUSoKJCTtPvyT4I84Q
+
+Password:
+K5zvc7OSvTfgp30eEJJe1ykuiGCVxiGkpV8UJz_pPpm9uJeYNXGMuAnaXY00PiaKDftLc0ehACvr16PX6h83tA
+
+Token permanent:
+2722fa4e60d1c3a10a3b7e833c306bd9ba13eb0a
+
+Webhook Secret:
+Gc5qBn0H-yKV3CAa3BKKlnC8MO5yu9JqTG7V8YoYwk-8Kc_UF7-7DabMBYyzlA7CtXL4gefr66rmHqYHUHstKw
+
+========================================
+
+✅ Statut : Configuré en mode SANDBOX (demo.campay.net)
+
+Pour passer en production :
+- Modifier api_base_url dans la table payment_providers
+- Changer is_sandbox de 1 à 0
+- Mettre à jour les credentials si nécessaire
+
+========================================

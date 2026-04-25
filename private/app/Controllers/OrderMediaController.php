@@ -31,7 +31,7 @@ class OrderMediaController extends Controller
         $mimeType = mime_content_type($file['tmp_name']);
 
         if (!array_key_exists($mimeType, OrderMedia::ALLOWED_MIME)) {
-            Response::error('Type de fichier non autorisé. Formats acceptés : jpg, png, webp, mp4', 422);
+            Response::error('Type de fichier non autorisé. Formats acceptés : images (jpg, png, gif, webp), vidéos (mp4, mov, avi), audio (mp3, m4a, ogg, wav), documents (pdf, doc, txt)', 422);
         }
 
         if ($file['size'] > OrderMedia::MAX_SIZE) {
@@ -50,7 +50,9 @@ class OrderMediaController extends Controller
         $dir       = UPLOAD_DIR . '/orders/' . $ref;
         $filePath  = $dir . '/' . $fileName;
         $fileUrl   = UPLOAD_URL . '/orders/' . $ref . '/' . $fileName;
-        $fileType  = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
+        $fileType  = str_starts_with($mimeType, 'video/') ? 'video'
+                    : (str_starts_with($mimeType, 'audio/') ? 'audio'
+                    : (str_starts_with($mimeType, 'image/') ? 'image' : 'document'));
 
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);

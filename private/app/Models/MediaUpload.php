@@ -9,16 +9,35 @@ class MediaUpload extends Model
     protected string $table = 'media_uploads';
 
     public const ALLOWED_MIME = [
+        // Images
         'image/jpeg'  => 'jpg',
         'image/png'   => 'png',
         'image/gif'   => 'gif',
         'image/webp'  => 'webp',
+        'image/svg+xml' => 'svg',
+        // Vidéos
         'video/mp4'   => 'mp4',
         'video/webm'  => 'webm',
-        'audio/webm'  => 'webm',
-        'audio/mp4'   => 'm4a',
+        'video/quicktime' => 'mov',
+        'video/avi'   => 'avi',
+        'video/mpeg'  => 'mpeg',
+        'video/x-msvideo' => 'avi',
+        'video/3gpp'  => '3gp',
+        'video/x-flv' => 'flv',
+        // Audio
         'audio/mpeg'  => 'mp3',
+        'audio/mp3'   => 'mp3',
+        'audio/mp4'   => 'm4a',
+        'audio/m4a'   => 'm4a',
         'audio/ogg'   => 'ogg',
+        'audio/webm'  => 'webm',
+        'audio/wav'   => 'wav',
+        'audio/x-wav' => 'wav',
+        'audio/aac'   => 'aac',
+        'audio/flac'  => 'flac',
+        'audio/midi'  => 'mid',
+        'audio/x-midi' => 'mid',
+        'audio/x-m4a' => 'm4a',
     ];
     public const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 

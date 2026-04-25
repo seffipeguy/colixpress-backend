@@ -72,7 +72,7 @@ class WalletService
 
     /**
      * Débiter un portefeuille (paiement commande)
-     * Retourne false si solde insuffisant
+     * @throws \Exception Si solde insuffisant ou erreur
      */
     public function debit(
         int    $userId,
@@ -83,7 +83,7 @@ class WalletService
         int    $performedBy = null
     ): array {
         if ($amount <= 0) {
-            Response::error('Le montant doit être supérieur à 0', 422);
+            throw new \InvalidArgumentException('Le montant doit être supérieur à 0');
         }
 
         $db = Database::getInstance();
@@ -95,10 +95,7 @@ class WalletService
 
             if ($balanceBefore < $amount) {
                 $db->rollBack();
-                Response::error('Solde insuffisant', 422, [
-                    'balance'  => $balanceBefore,
-                    'required' => $amount,
-                ]);
+                throw new \Exception('Solde insuffisant', 422);
             }
 
             $balanceAfter = $balanceBefore - $amount;
@@ -128,7 +125,10 @@ class WalletService
             ];
         } catch (\Exception $e) {
             $db->rollBack();
-            Response::error('Erreur lors du débit du portefeuille', 500);
+            if ($e->getMessage() === 'Solde insuffisant') {
+                throw $e; // Re-lancer pour gestion spécifique
+            }
+            throw new \Exception('Erreur lors du débit du portefeuille', 500);
         }
     }
 

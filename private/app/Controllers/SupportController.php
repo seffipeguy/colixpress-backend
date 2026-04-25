@@ -189,8 +189,14 @@ class SupportController extends Controller
         $ext      = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
         $allowedMimes = [
+            // Images
             'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-            'video/mp4', 'video/quicktime',
+            // Vidéos
+            'video/mp4', 'video/quicktime', 'video/webm', 'video/avi', 'video/mpeg', 'video/x-msvideo',
+            // Audio
+            'audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/webm', 'audio/wav', 'audio/x-wav', 'audio/aac', 'audio/flac',
+            'audio/midi', 'audio/x-midi', 'audio/x-m4a', 'audio/mp3',
+            // Documents
             'application/pdf', 'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ];
@@ -203,7 +209,8 @@ class SupportController extends Controller
         }
 
         $fileType = str_starts_with($mimeType, 'image/') ? 'image'
-                  : (str_starts_with($mimeType, 'video/') ? 'video' : 'document');
+                  : (str_starts_with($mimeType, 'video/') ? 'video'
+                  : (str_starts_with($mimeType, 'audio/') ? 'audio' : 'document'));
 
         $uploadDir = dirname(__DIR__, 3) . '/public_html/uploads/support/';
         if (!is_dir($uploadDir)) {

@@ -24,13 +24,27 @@ class MediaController extends Controller
         $mimeType = mime_content_type($file['tmp_name']);
 
         $allowedMime = array_merge(MediaUpload::ALLOWED_MIME, [
+            // Documents PDF
             'application/pdf'      => 'pdf',
+            // Documents Word
             'application/msword'   => 'doc',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            // Documents Excel
+            'application/vnd.ms-excel' => 'xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+            // Documents PowerPoint
+            'application/vnd.ms-powerpoint' => 'ppt',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx',
+            // Texte
+            'text/plain' => 'txt',
+            'text/csv'   => 'csv',
+            // Archives
+            'application/zip' => 'zip',
+            'application/x-zip-compressed' => 'zip',
         ]);
 
         if (!array_key_exists($mimeType, $allowedMime)) {
-            Response::error('Type de fichier non autorisé. Formats acceptés : jpg, png, gif, webp, mp4, mp3, webm, m4a, ogg, pdf, doc', 422);
+            Response::error('Type de fichier non autorisé. Formats acceptés : images (jpg, png, gif, webp), vidéos (mp4, mov, avi), audio (mp3, m4a, ogg, wav, aac), documents (pdf, doc, xls, txt)', 422);
         }
 
         if ($file['size'] > MediaUpload::MAX_SIZE) {

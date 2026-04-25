@@ -171,17 +171,9 @@ class OrderController extends Controller
         $itemsTotal = 0;
         $items = $request->input('items', []);
 
-        // Débit wallet si paiement par portefeuille
-        if (($data['payment_method'] ?? 'cash') === 'wallet' && $data['price'] > 0) {
-            $walletService = new WalletService();
-            $walletService->debit(
-                $this->userId(),
-                (int) $data['price'],
-                'order_payment',
-                'Paiement commande ' . $data['reference'],
-                $data['reference']
-            );
-        }
+        // NOTE: Le débit wallet ne se fait plus ici
+        // Le paiement sera effectué lors de la validation de la commande
+        // Cela permet de créer une commande même avec un solde insuffisant
 
         $orderId = $orderModel->create($data);
 
@@ -362,12 +354,21 @@ class OrderController extends Controller
             'pickup_address', 'pickup_lat', 'pickup_lng', 'pickup_contact_name', 'pickup_contact_phone',
             'dropoff_address', 'dropoff_lat', 'dropoff_lng', 'dropoff_contact_name', 'dropoff_contact_phone',
             'package_description', 'package_size', 'package_weight_kg', 'package_value',
-            'notes', 'pickup_instructions', 'delivery_instructions', 'pickup_scheduled_at', 'scheduled_at', 'payment_method'
+            'notes', 'pickup_instructions', 'delivery_instructions', 'pickup_scheduled_at', 'scheduled_at', 'payment_method',
+            'is_round_trip'
         ];
 
         foreach ($fields as $field) {
             if ($request->has($field)) {
-                $data[$field] = $request->input($field);
+                $value = $request->input($field);
+                // Convertir certains champs en entier
+                if ($field === 'is_round_trip') {
+                    $value = $value ? 1 : 0;
+                }
+                if ($field === 'package_value') {
+                    $value = (int) $value;
+                }
+                $data[$field] = $value;
             }
         }
 
@@ -375,9 +376,9 @@ class OrderController extends Controller
             Response::success($order, 'No changes made');
         }
 
-        // Recalculate price if location or package info changes
+        // Recalculate price if location, package info, or round trip changes
         $recalcPrice = false;
-        $priceFields = ['pickup_lat', 'pickup_lng', 'dropoff_lat', 'dropoff_lng', 'package_size', 'package_weight_kg', 'package_value'];
+        $priceFields = ['pickup_lat', 'pickup_lng', 'dropoff_lat', 'dropoff_lng', 'package_size', 'package_weight_kg', 'package_value', 'is_round_trip'];
         foreach ($priceFields as $field) {
             if (isset($data[$field])) {
                 $recalcPrice = true;
@@ -415,7 +416,13 @@ class OrderController extends Controller
                 (int) ($merged['package_value'] ?? 0)
             );
             
-            $data['price'] = $priceResult['price'] + ($data['maps_api_cost'] ?? $order['maps_api_cost']);
+            $basePrice = $priceResult['price'];
+            
+            // Calculer la surcharge aller-retour si applicable
+            $isRoundTrip = !empty($merged['is_round_trip']);
+            $roundTripSurcharge = $isRoundTrip ? (int) ceil($basePrice * 0.5) : 0;
+            
+            $data['price'] = $basePrice + $roundTripSurcharge + ($data['maps_api_cost'] ?? $order['maps_api_cost']);
         }
 
         $orderModel->update((int) $order['id'], $data);
@@ -442,6 +449,33 @@ class OrderController extends Controller
 
         $orderModel->update((int) $order['id'], ['livreur_id' => $this->userId()]);
         $orderModel->updateStatus((int) $order['id'], 'accepted', $this->userId(), 'Accepted by livreur');
+
+        // Débit wallet si paiement par portefeuille (au moment de l'acceptation)
+        if ($order['payment_method'] === 'wallet' && (int) $order['price'] > 0) {
+            $walletService = new WalletService();
+            try {
+                $walletService->debit(
+                    (int) $order['client_id'],
+                    (int) $order['price'],
+                    'order_payment',
+                    'Paiement commande ' . $order['reference'],
+                    $order['reference']
+                );
+                // Mettre à jour le statut de paiement
+                $orderModel->update((int) $order['id'], ['payment_status' => 'paid']);
+            } catch (\Exception $e) {
+                // Solde insuffisant - la commande reste acceptée mais le paiement est en attente
+                $orderModel->update((int) $order['id'], ['payment_status' => 'pending']);
+                // Notifier le client qu'il doit recharger son wallet
+                Notification::send(
+                    (int) $order['client_id'],
+                    'Paiement requis',
+                    'Votre commande ' . $order['reference'] . ' est acceptée mais le paiement a échoué par manque de solde. Veuillez recharger votre wallet.',
+                    'payment_failed',
+                    ['order_id' => (int) $order['id'], 'order_reference' => $order['reference'], 'amount' => (int) $order['price']]
+                );
+            }
+        }
 
         // Notify client
         Notification::send(

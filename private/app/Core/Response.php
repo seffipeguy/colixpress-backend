@@ -4,8 +4,40 @@ namespace App\Core;
 
 class Response
 {
+    /**
+     * Convertir les dates en timezone locale si possible
+     */
+    private static function convertDates(mixed $data): mixed
+    {
+        if (!is_array($data)) {
+            return $data;
+        }
+
+        // Essayer de récupérer le country_id de l'utilisateur connecté
+        $countryId = 1; // Par défaut Cameroun
+        
+        try {
+            if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+                $auth = new Auth();
+                $user = $auth->user();
+                if ($user && isset($user['country_id'])) {
+                    $countryId = (int) $user['country_id'];
+                }
+            }
+        } catch (\Exception $e) {
+            // Ignorer les erreurs, utiliser le pays par défaut
+        }
+
+        return DateHelper::convertDatesInArray($data, $countryId);
+    }
+
     public static function json(mixed $data, int $code = 200): void
     {
+        // Convertir les dates avant de logger et renvoyer
+        if (is_array($data)) {
+            $data = self::convertDates($data);
+        }
+
         // Log response
         $logContext = is_array($data) ? $data : ['data' => $data];
         if (isset($logContext['data']) && (is_array($logContext['data']) || is_object($logContext['data']))) {

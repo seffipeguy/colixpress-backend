@@ -321,6 +321,48 @@ Se connecter avec téléphone + mot de passe.
 
 ---
 
+### `GET /api/auth/check-phone` 🟢 Public
+
+Vérifier si un numéro de téléphone est déjà inscrit dans le système.
+
+**Query params :**
+- `country_id` (int, requis) — ID du pays
+- `phone` (string, requis) — Numéro de téléphone
+
+**Exemple :**
+```
+GET /api/auth/check-phone?country_id=1&phone=690689765
+```
+
+**Réponse (200) :**
+```json
+{
+  "success": true,
+  "data": {
+    "exists": true,
+    "is_verified": true,
+    "has_password": true
+  }
+}
+```
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `exists` | boolean | `true` si le numéro est inscrit, `false` sinon |
+| `is_verified` | boolean | `true` si le compte est vérifié (OTP validé) |
+| `has_password` | boolean | `true` si un mot de passe est défini |
+
+**Cas d'usage :**
+- Avant l'inscription : vérifier si le numéro existe déjà
+- Écran de connexion : orienter vers login (si `has_password`) ou OTP (sinon)
+- Validation de formulaire : feedback en temps réel
+
+**Erreurs :**
+- `422` — Paramètres manquants ou invalides
+- `422` — Longueur du numéro incorrecte pour le pays
+
+---
+
 ### `PUT /api/auth/password` 🔒 Auth requise
 
 Modifier ou définir son mot de passe.
@@ -2722,93 +2764,94 @@ Règles de tarification actives.
 | 4 | POST | `/api/auth/verify-otp` | 🟢 | — |
 | 5 | POST | `/api/auth/register` | 🟢 | — |
 | 6 | POST | `/api/auth/login` | 🟢 | — |
-| 7 | POST | `/api/auth/logout` | 🔒 | — |
-| 8 | GET | `/api/auth/me` | 🔒 | — |
-| 9 | PUT | `/api/auth/password` | 🔒 | — |
-| 10 | GET | `/api/user/profile` | 🔒 | — |
-| 11 | PUT | `/api/user/profile` | 🔒 | — |
-| 12 | POST | `/api/user/profile-photo` | 🔒 | — |
-| 13 | DELETE | `/api/user/account` | 🔒 | — |
-| 14 | GET | `/api/addresses` | 🔒 | — |
-| 15 | POST | `/api/addresses` | 🔒 | — |
-| 16 | GET | `/api/addresses/{id}` | 🔒 | — |
-| 17 | PUT | `/api/addresses/{id}` | 🔒 | — |
-| 18 | DELETE | `/api/addresses/{id}` | 🔒 | — |
-| 19 | GET | `/api/orders` | 🔒 | — |
-| 20 | POST | `/api/orders` | 🔒 | — |
-| 21 | GET | `/api/orders/pending` | 🔒 | livreur/admin |
-| 22 | GET | `/api/orders/estimate` | 🔒 | — |
-| 23 | GET | `/api/orders/frequent-places` | 🔒 | — |
-| 24 | GET | `/api/orders/frequent-shops` | 🔒 | — |
-| 25 | GET | `/api/orders/{reference}` | 🔒 | — |
-| 26 | PUT | `/api/orders/{reference}/accept` | 🔒 | livreur |
-| 27 | PUT | `/api/orders/{reference}/status` | 🔒 | livreur |
-| 28 | PUT | `/api/orders/{reference}/cancel` | 🔒 | client |
-| 29 | GET | `/api/orders/{reference}/tracking` | 🔒 | — |
-| 30 | POST | `/api/orders/{order_id}/rating` | 🔒 | client |
-| 31 | GET | `/api/shops` | 🟢 | — |
-| 32 | GET | `/api/shops/popular` | 🟢 | — |
-| 33 | GET | `/api/shops/{id}` | 🟢 | — |
-| 34 | GET | `/api/shop-categories` | 🟢 | — |
-| 35 | GET | `/api/shops/{shop_id}/items` | 🟢 | — |
-| 34 | POST | `/api/shops` | 🔒 | shop_owner/admin |
-| 35 | PUT | `/api/shops/{id}` | 🔒 | owner/admin |
-| 36 | GET | `/api/shops/my` | 🔒 | shop_owner |
-| 37 | PUT | `/api/shops/{id}/approve` | 🔒 | admin |
-| 38 | POST | `/api/shops/{shop_id}/items` | 🔒 | owner/admin |
-| 39 | PUT | `/api/shops/{shop_id}/items/{id}` | 🔒 | owner/admin |
-| 40 | DELETE | `/api/shops/{shop_id}/items/{id}` | 🔒 | owner/admin |
-| 41 | POST | `/api/livreur/register` | 🔒 | — |
-| 42 | GET | `/api/livreur/profile` | 🔒 | livreur |
-| 43 | PUT | `/api/livreur/profile` | 🔒 | livreur |
-| 44 | PUT | `/api/livreur/availability` | 🔒 | livreur |
-| 45 | POST | `/api/livreur/location` | 🔒 | livreur |
-| 46 | GET | `/api/livreur/nearby` | 🔒 | — |
-| 47 | PUT | `/api/livreur/{id}/approve` | 🔒 | admin |
-| 48 | GET | `/api/livreur/{livreur_id}/ratings` | 🔒 | — |
-| 49 | GET | `/api/notifications` | 🔒 | — |
-| 50 | PUT | `/api/notifications/{id}/read` | 🔒 | — |
-| 51 | PUT | `/api/notifications/read-all` | 🔒 | — |
-| 52 | GET | `/api/pricing` | 🟢 | — |
-| 53 | GET | `/api/pricing/{city}` | 🟢 | — |
-| 54 | POST | `/api/pricing/calculate` | 🔒 | — |
-| 55 | POST | `/api/pricing` | 🔒 | admin |
-| 56 | PUT | `/api/pricing/{id}` | 🔒 | admin |
-| 57 | GET | `/api/settings/public` | 🟢 | — |
-| 58 | GET | `/api/settings/maps-pricing` | 🟢 | — |
-| 59 | GET | `/api/settings` | 🔒 | admin |
-| 60 | GET | `/api/settings/categories` | 🔒 | admin |
-| 61 | POST | `/api/settings` | 🔒 | admin |
-| 62 | PUT | `/api/settings/bulk` | 🔒 | admin |
-| 63 | PUT | `/api/settings/{key}` | 🔒 | admin |
-| 64 | DELETE | `/api/settings/{key}` | 🔒 | admin |
-| 65 | GET | `/api/promotions` | 🔒 | admin |
-| 66 | POST | `/api/promotions` | 🔒 | admin |
-| 67 | POST | `/api/promotions/validate` | 🔒 | — |
-| 68 | GET | `/api/promotions/{id}` | 🔒 | admin |
-| 69 | PUT | `/api/promotions/{id}` | 🔒 | admin |
-| 70 | DELETE | `/api/promotions/{id}` | 🔒 | admin |
-| 71 | GET | `/api/banners` | 🟢* | — |
-| 72 | GET | `/api/admin/banners` | 🔒 | admin |
-| 73 | POST | `/api/admin/banners` | 🔒 | admin |
-| 74 | PUT | `/api/admin/banners/reorder` | 🔒 | admin |
-| 75 | GET | `/api/admin/banners/{id}` | 🔒 | admin |
-| 76 | PUT | `/api/admin/banners/{id}` | 🔒 | admin |
-| 77 | DELETE | `/api/admin/banners/{id}` | 🔒 | admin |
-| 78 | POST | `/api/admin/banners/{id}/upload` | 🔒 | admin |
-| 79 | GET | `/api/maps/autocomplete` | 🔒 | — |
-| 80 | GET | `/api/maps/geocode` | 🔒 | — |
-| 81 | GET | `/api/maps/reverse-geocode` | 🔒 | — |
-| 82 | GET | `/api/maps/directions` | 🔒 | — |
-| 83 | GET | `/api/maps/place-details` | 🔒 | — |
-| 84 | GET | `/api/admin/maps/cache-stats` | 🔒 | admin |
-| 85 | POST | `/api/admin/maps/cache-purge` | 🔒 | admin |
-| 86 | GET | `/api/developer/api-keys` | 🔒 | developer |
-| 87 | POST | `/api/developer/api-keys` | 🔒 | developer |
-| 88 | PUT | `/api/developer/api-keys/{id}` | 🔒 | developer |
-| 89 | POST | `/api/developer/api-keys/{id}/regenerate-secret` | 🔒 | developer |
-| 90 | DELETE | `/api/developer/api-keys/{id}` | 🔒 | developer |
-| 91 | GET | `/api/developer/api-keys/{id}/stats` | 🔒 | developer |
+| 7 | GET | `/api/auth/check-phone` | 🟢 | — |
+| 8 | POST | `/api/auth/logout` | 🔒 | — |
+| 9 | GET | `/api/auth/me` | 🔒 | — |
+| 10 | PUT | `/api/auth/password` | 🔒 | — |
+| 11 | GET | `/api/user/profile` | 🔒 | — |
+| 12 | PUT | `/api/user/profile` | 🔒 | — |
+| 13 | POST | `/api/user/profile-photo` | 🔒 | — |
+| 14 | DELETE | `/api/user/account` | 🔒 | — |
+| 15 | GET | `/api/addresses` | 🔒 | — |
+| 16 | POST | `/api/addresses` | 🔒 | — |
+| 17 | GET | `/api/addresses/{id}` | 🔒 | — |
+| 18 | PUT | `/api/addresses/{id}` | 🔒 | — |
+| 19 | DELETE | `/api/addresses/{id}` | 🔒 | — |
+| 20 | GET | `/api/orders` | 🔒 | — |
+| 21 | POST | `/api/orders` | 🔒 | — |
+| 22 | GET | `/api/orders/pending` | 🔒 | livreur/admin |
+| 23 | GET | `/api/orders/estimate` | 🔒 | — |
+| 24 | GET | `/api/orders/frequent-places` | 🔒 | — |
+| 25 | GET | `/api/orders/frequent-shops` | 🔒 | — |
+| 26 | GET | `/api/orders/{reference}` | 🔒 | — |
+| 27 | PUT | `/api/orders/{reference}/accept` | 🔒 | livreur |
+| 28 | PUT | `/api/orders/{reference}/status` | 🔒 | livreur |
+| 29 | PUT | `/api/orders/{reference}/cancel` | 🔒 | client |
+| 30 | GET | `/api/orders/{reference}/tracking` | 🔒 | — |
+| 31 | POST | `/api/orders/{order_id}/rating` | 🔒 | client |
+| 32 | GET | `/api/shops` | 🟢 | — |
+| 33 | GET | `/api/shops/popular` | 🟢 | — |
+| 34 | GET | `/api/shops/{id}` | 🟢 | — |
+| 35 | GET | `/api/shop-categories` | 🟢 | — |
+| 36 | GET | `/api/shops/{shop_id}/items` | 🟢 | — |
+| 37 | POST | `/api/shops` | 🔒 | shop_owner/admin |
+| 38 | PUT | `/api/shops/{id}` | 🔒 | owner/admin |
+| 39 | GET | `/api/shops/my` | 🔒 | shop_owner |
+| 40 | PUT | `/api/shops/{id}/approve` | 🔒 | admin |
+| 41 | POST | `/api/shops/{shop_id}/items` | 🔒 | owner/admin |
+| 42 | PUT | `/api/shops/{shop_id}/items/{id}` | 🔒 | owner/admin |
+| 43 | DELETE | `/api/shops/{shop_id}/items/{id}` | 🔒 | owner/admin |
+| 44 | POST | `/api/livreur/register` | 🔒 | — |
+| 45 | GET | `/api/livreur/profile` | 🔒 | livreur |
+| 46 | PUT | `/api/livreur/profile` | 🔒 | livreur |
+| 47 | PUT | `/api/livreur/availability` | 🔒 | livreur |
+| 48 | POST | `/api/livreur/location` | 🔒 | livreur |
+| 49 | GET | `/api/livreur/nearby` | 🔒 | — |
+| 50 | PUT | `/api/livreur/{id}/approve` | 🔒 | admin |
+| 51 | GET | `/api/livreur/{livreur_id}/ratings` | 🔒 | — |
+| 52 | GET | `/api/notifications` | 🔒 | — |
+| 53 | PUT | `/api/notifications/{id}/read` | 🔒 | — |
+| 54 | PUT | `/api/notifications/read-all` | 🔒 | — |
+| 55 | GET | `/api/pricing` | 🟢 | — |
+| 56 | GET | `/api/pricing/{city}` | 🟢 | — |
+| 57 | POST | `/api/pricing/calculate` | 🔒 | — |
+| 58 | POST | `/api/pricing` | 🔒 | admin |
+| 59 | PUT | `/api/pricing/{id}` | 🔒 | admin |
+| 60 | GET | `/api/settings/public` | 🟢 | — |
+| 61 | GET | `/api/settings/maps-pricing` | 🟢 | — |
+| 62 | GET | `/api/settings` | 🔒 | admin |
+| 63 | GET | `/api/settings/categories` | 🔒 | admin |
+| 64 | POST | `/api/settings` | 🔒 | admin |
+| 65 | PUT | `/api/settings/bulk` | 🔒 | admin |
+| 66 | PUT | `/api/settings/{key}` | 🔒 | admin |
+| 67 | DELETE | `/api/settings/{key}` | 🔒 | admin |
+| 68 | GET | `/api/promotions` | 🔒 | admin |
+| 69 | POST | `/api/promotions` | 🔒 | admin |
+| 70 | POST | `/api/promotions/validate` | 🔒 | — |
+| 71 | GET | `/api/promotions/{id}` | 🔒 | admin |
+| 72 | PUT | `/api/promotions/{id}` | 🔒 | admin |
+| 73 | DELETE | `/api/promotions/{id}` | 🔒 | admin |
+| 74 | GET | `/api/banners` | 🟢* | — |
+| 75 | GET | `/api/admin/banners` | 🔒 | admin |
+| 76 | POST | `/api/admin/banners` | 🔒 | admin |
+| 77 | PUT | `/api/admin/banners/reorder` | 🔒 | admin |
+| 78 | GET | `/api/admin/banners/{id}` | 🔒 | admin |
+| 79 | PUT | `/api/admin/banners/{id}` | 🔒 | admin |
+| 80 | DELETE | `/api/admin/banners/{id}` | 🔒 | admin |
+| 81 | POST | `/api/admin/banners/{id}/upload` | 🔒 | admin |
+| 82 | GET | `/api/maps/autocomplete` | 🔒 | — |
+| 83 | GET | `/api/maps/geocode` | 🔒 | — |
+| 84 | GET | `/api/maps/reverse-geocode` | 🔒 | — |
+| 85 | GET | `/api/maps/directions` | 🔒 | — |
+| 86 | GET | `/api/maps/place-details` | 🔒 | — |
+| 87 | GET | `/api/admin/maps/cache-stats` | 🔒 | admin |
+| 88 | POST | `/api/admin/maps/cache-purge` | 🔒 | admin |
+| 89 | GET | `/api/developer/api-keys` | 🔒 | developer |
+| 90 | POST | `/api/developer/api-keys` | 🔒 | developer |
+| 91 | PUT | `/api/developer/api-keys/{id}` | 🔒 | developer |
+| 92 | POST | `/api/developer/api-keys/{id}/regenerate-secret` | 🔒 | developer |
+| 93 | DELETE | `/api/developer/api-keys/{id}` | 🔒 | developer |
+| 94 | GET | `/api/developer/api-keys/{id}/stats` | 🔒 | developer |
 
 > 🟢* = public avec auth optionnelle (si Bearer token présent, filtre par rôle)
 
@@ -2816,17 +2859,17 @@ Règles de tarification actives.
 
 | # | Méthode | Endpoint | Description |
 |---|---------|----------|-------------|
-| 92 | POST | `/api/v1/orders` | Créer une commande |
-| 93 | GET | `/api/v1/orders` | Lister ses commandes |
-| 94 | GET | `/api/v1/orders/{reference}` | Détail commande |
-| 95 | GET | `/api/v1/orders/by-reference/{ref}` | Chercher par ref externe |
-| 96 | PUT | `/api/v1/orders/{id}/cancel` | Annuler |
-| 97 | GET | `/api/v1/orders/{id}/tracking` | Tracking GPS |
-| 98 | GET | `/api/v1/estimate` | Estimation prix |
-| 99 | GET | `/api/v1/shops` | Liste boutiques |
-| 100 | GET | `/api/v1/shops/{id}` | Détail boutique |
-| 101 | GET | `/api/v1/countries` | Pays |
-| 102 | GET | `/api/v1/pricing` | Tarification |
+| 95 | POST | `/api/v1/orders` | Créer une commande |
+| 96 | GET | `/api/v1/orders` | Lister ses commandes |
+| 97 | GET | `/api/v1/orders/{reference}` | Détail commande |
+| 98 | GET | `/api/v1/orders/by-reference/{ref}` | Chercher par ref externe |
+| 99 | PUT | `/api/v1/orders/{id}/cancel` | Annuler |
+| 100 | GET | `/api/v1/orders/{id}/tracking` | Tracking GPS |
+| 101 | GET | `/api/v1/estimate` | Estimation prix |
+| 102 | GET | `/api/v1/shops` | Liste boutiques |
+| 103 | GET | `/api/v1/shops/{id}` | Détail boutique |
+| 104 | GET | `/api/v1/countries` | Pays |
+| 105 | GET | `/api/v1/pricing` | Tarification |
 
 ---
 

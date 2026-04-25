@@ -29,6 +29,9 @@ $router->post('/api/auth/verify-otp', App\Controllers\AuthController::class, 've
 $router->post('/api/auth/register', App\Controllers\AuthController::class, 'register');
 $router->post('/api/auth/login', App\Controllers\AuthController::class, 'login');
 
+// Check if phone number is registered
+$router->get('/api/auth/check-phone', App\Controllers\AuthController::class, 'checkPhone');
+
 // Public shop browsing
 $router->get('/api/shops', App\Controllers\ShopController::class, 'index');
 $router->get('/api/shops/popular', App\Controllers\ShopController::class, 'popular');
@@ -57,6 +60,12 @@ $router->get('/api/maps/place-details', App\Controllers\MapsController::class, '
 
 // VAPID public key (public)
 $router->get('/api/push/vapid-public-key', App\Controllers\PushController::class, 'vapidPublicKey');
+
+// Payment - Public
+$router->get('/api/payment/providers', App\Controllers\PaymentController::class, 'providers');
+$router->get('/api/payment/webhook-test', App\Controllers\PaymentController::class, 'webhook');
+$router->post('/api/payment/webhook/{provider_code}', App\Controllers\PaymentController::class, 'webhook');
+$router->get('/api/payment/webhook/{provider_code}', App\Controllers\PaymentController::class, 'webhook');
 
 // Banners / News (public, with optional auth for role targeting)
 $router->get('/api/banners', App\Controllers\BannerController::class, 'index');
@@ -219,6 +228,26 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/notifications', App\Controllers\NotificationController::class, 'index');
     $router->put('/api/notifications/{id}/read', App\Controllers\NotificationController::class, 'markRead');
     $router->put('/api/notifications/read-all', App\Controllers\NotificationController::class, 'markAllRead');
+
+    // --- Payment (client) ---
+    $router->post('/api/payment/initiate', App\Controllers\PaymentController::class, 'initiate');
+    $router->get('/api/payment/status', App\Controllers\PaymentController::class, 'status');
+    $router->get('/api/payment/transactions', App\Controllers\PaymentController::class, 'transactions');
+
+    // --- Admin: Payment Providers ---
+    $router->get('/api/admin/payment/providers', App\Controllers\AdminPaymentController::class, 'index');
+    $router->post('/api/admin/payment/providers', App\Controllers\AdminPaymentController::class, 'store');
+    $router->get('/api/admin/payment/providers/{id}', App\Controllers\AdminPaymentController::class, 'show');
+    $router->put('/api/admin/payment/providers/{id}', App\Controllers\AdminPaymentController::class, 'update');
+    $router->delete('/api/admin/payment/providers/{id}', App\Controllers\AdminPaymentController::class, 'destroy');
+    $router->get('/api/admin/payment/providers/{id}/countries', App\Controllers\AdminPaymentController::class, 'countries');
+    $router->post('/api/admin/payment/providers/{id}/countries', App\Controllers\AdminPaymentController::class, 'linkCountry');
+    $router->delete('/api/admin/payment/providers/{id}/countries/{country_id}', App\Controllers\AdminPaymentController::class, 'unlinkCountry');
+    $router->put('/api/admin/payment/providers/{id}/countries/{country_id}/default', App\Controllers\AdminPaymentController::class, 'setDefaultCountry');
+    $router->get('/api/admin/payment/transactions', App\Controllers\AdminPaymentController::class, 'transactions');
+    $router->post('/api/admin/payment/transactions/{reference}/check-status', App\Controllers\AdminPaymentController::class, 'checkStatus');
+    $router->post('/api/admin/payment/reconcile', App\Controllers\AdminPaymentController::class, 'reconcile');
+    $router->get('/api/admin/payment/stats', App\Controllers\AdminPaymentController::class, 'stats');
 
     // --- Pricing (admin) ---
     $router->post('/api/pricing', App\Controllers\PricingController::class, 'store');
