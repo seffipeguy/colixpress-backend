@@ -55,6 +55,11 @@ class Tip extends Model
      */
     private function shouldShowToUser(array $tip, int $userId): bool
     {
+        // Vérifier que les champs requis existent
+        if (!isset($tip['id']) || !isset($tip['frequency'])) {
+            return false;
+        }
+
         $frequency = $tip['frequency'];
 
         // 'always' ou 'infinite' = toujours afficher à chaque visite
