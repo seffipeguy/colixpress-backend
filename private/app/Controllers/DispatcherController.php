@@ -93,14 +93,19 @@ class DispatcherController
                 Response::error("Commande déjà prise par $name", 409);
             }
 
-            $db->prepare("UPDATE orders SET claimed_by = :did, claimed_at = NOW() WHERE id = :id")
-               ->execute(['did' => $dispatcherId, 'id' => $orderId]);
+            // Récupérer l'entreprise du dispatcher
+            $companyStmt = $db->prepare("SELECT company_id FROM company_users WHERE user_id = :uid AND is_active = 1 LIMIT 1");
+            $companyStmt->execute(['uid' => $dispatcherId]);
+            $companyId = $companyStmt->fetchColumn() ?: null;
+
+            $db->prepare("UPDATE orders SET claimed_by = :did, claimed_at = NOW(), dispatching_company_id = :cid WHERE id = :id")
+               ->execute(['did' => $dispatcherId, 'cid' => $companyId, 'id' => $orderId]);
 
             $db->prepare("INSERT INTO order_claims (order_id, claimed_by) VALUES (:oid, :did)")
                ->execute(['oid' => $orderId, 'did' => $dispatcherId]);
 
             $db->commit();
-            Response::success(['order_id' => $orderId], 'Commande prise avec succès', 200);
+            Response::success(['order_id' => $orderId, 'company_id' => $companyId], 'Commande prise avec succès', 200);
         } catch (\Throwable $e) {
             $db->rollBack();
             Response::error('Erreur lors du claim : ' . $e->getMessage(), 500);
@@ -131,7 +136,7 @@ class DispatcherController
             Response::forbidden('Vous ne pouvez pas relâcher une commande que vous ne gérez pas');
         }
 
-        $db->prepare("UPDATE orders SET claimed_by = NULL, claimed_at = NULL WHERE id = :id")
+        $db->prepare("UPDATE orders SET claimed_by = NULL, claimed_at = NULL, dispatching_company_id = NULL WHERE id = :id")
            ->execute(['id' => $orderId]);
 
         $db->prepare("

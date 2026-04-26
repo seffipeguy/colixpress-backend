@@ -82,10 +82,12 @@ class Order extends Model
             SELECT o.*,
                    uc.first_name AS client_first_name, uc.last_name AS client_last_name, uc.phone AS client_phone,
                    ud.first_name AS dispatcher_first_name, ud.last_name AS dispatcher_last_name,
+                   c.name AS dispatching_company_name,
                    s.name AS shop_name
             FROM {$this->table} o
             JOIN users uc ON uc.id = o.client_id
             LEFT JOIN users ud ON ud.id = o.claimed_by
+            LEFT JOIN companies c ON c.id = o.dispatching_company_id
             LEFT JOIN shops s ON s.id = o.shop_id
             WHERE {$field} = :val
             LIMIT 1
