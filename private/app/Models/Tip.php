@@ -18,6 +18,7 @@ class Tip extends Model
         $db = Database::getInstance();
 
         // Base query: tips actifs pour cette page
+        // Note: on filtre par rôle dans PHP pour éviter les problèmes de collation avec JSON_CONTAINS
         $sql = "
             SELECT t.*
             FROM {$this->table} t
@@ -26,15 +27,23 @@ class Tip extends Model
         ";
         $params = ['page_route' => $pageRoute];
 
-        // Filtrer par rôle si spécifié
-        if ($userRole) {
-            $sql .= " AND (t.target_roles IS NULL OR JSON_CONTAINS(t.target_roles, :role))";
-            $params['role'] = '"' . $userRole . '"';
-        }
-
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
-        $tips = $stmt->fetchAll();
+        $allTips = $stmt->fetchAll();
+
+        // Filtrer par rôle si spécifié
+        $tips = [];
+        foreach ($allTips as $tip) {
+            // Si pas de restriction de rôle ou rôle correspondant
+            if (empty($tip['target_roles'])) {
+                $tips[] = $tip;
+            } else {
+                $targetRoles = json_decode($tip['target_roles'], true);
+                if (is_array($targetRoles) && in_array($userRole, $targetRoles)) {
+                    $tips[] = $tip;
+                }
+            }
+        }
 
         // Filtrer selon la fréquence et l'historique de l'utilisateur
         $filteredTips = [];
