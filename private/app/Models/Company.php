@@ -13,18 +13,6 @@ class Company extends Model
         return $this->findBy('owner_id', $ownerId);
     }
 
-    public function getLivreurs(int $companyId): array
-    {
-        $stmt = $this->db->prepare("
-            SELECT lp.*, u.first_name, u.last_name, u.phone, u.email
-            FROM livreur_profiles lp
-            JOIN users u ON u.id = lp.user_id
-            WHERE lp.company_id = :cid
-        ");
-        $stmt->execute(['cid' => $companyId]);
-        return $stmt->fetchAll();
-    }
-
     public function getShops(int $companyId): array
     {
         $stmt = $this->db->prepare("
@@ -34,18 +22,6 @@ class Company extends Model
         ");
         $stmt->execute(['cid' => $companyId]);
         return $stmt->fetchAll();
-    }
-
-    public function addLivreur(int $companyId, int $livreurId): bool
-    {
-        $stmt = $this->db->prepare("UPDATE livreur_profiles SET company_id = :cid WHERE user_id = :lid");
-        return $stmt->execute(['cid' => $companyId, 'lid' => $livreurId]);
-    }
-
-    public function removeLivreur(int $companyId, int $livreurId): bool
-    {
-        $stmt = $this->db->prepare("UPDATE livreur_profiles SET company_id = NULL WHERE user_id = :lid AND company_id = :cid");
-        return $stmt->execute(['cid' => $companyId, 'lid' => $livreurId]);
     }
 
     public function getMembers(int $companyId, string $role = null): array
@@ -93,17 +69,4 @@ class Company extends Model
         return $stmt->fetch() ?: null;
     }
 
-    public function getAllLivreurs(): array
-    {
-        $stmt = $this->db->prepare("
-            SELECT lp.*, u.first_name, u.last_name, u.phone, u.email,
-                   c.name as company_name, c.id as company_id
-            FROM livreur_profiles lp
-            JOIN users u ON u.id = lp.user_id
-            LEFT JOIN companies c ON c.id = lp.company_id
-            WHERE lp.is_available = 1
-        ");
-        $stmt->execute();
-        return $stmt->fetchAll();
-    }
 }

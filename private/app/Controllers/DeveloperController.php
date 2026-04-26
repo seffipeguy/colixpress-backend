@@ -363,26 +363,12 @@ class DeveloperController extends Controller
             Response::notFound('Order not found');
         }
 
-        $currentPos = null;
-        if ($order['livreur_id']) {
-            $livreurModel = new \App\Models\LivreurProfile();
-            $profile = $livreurModel->findByUserId((int) $order['livreur_id']);
-            if ($profile && $profile['current_lat']) {
-                $currentPos = [
-                    'latitude'   => $profile['current_lat'],
-                    'longitude'  => $profile['current_lng'],
-                    'updated_at' => $profile['last_location_at'],
-                ];
-            }
-        }
-
-        $locationModel = new \App\Models\LivreurLocation();
-        $trail = $locationModel->getTrail((int) $order['id']);
+        $historyModel = new \App\Models\OrderStatusHistory();
+        $history = $historyModel->getByOrder((int) $order['id']);
 
         Response::success([
-            'order_status'     => $order['status'],
-            'current_position' => $currentPos,
-            'trail'            => $trail,
+            'order_status' => $order['status'],
+            'history'      => $history,
         ]);
     }
 

@@ -144,10 +144,10 @@ class OrderMediaController extends Controller
             Response::notFound('Commande non trouvée');
         }
 
-        // Seul le client propriétaire, le livreur assigné ou un admin
+        // Seul le client propriétaire, le dispatcher assigné ou un admin
         if (!Auth::isAdmin()
             && (int) $order['client_id'] !== $this->userId()
-            && (int) $order['livreur_id'] !== $this->userId()
+            && (int) ($order['claimed_by'] ?? 0) !== $this->userId()
         ) {
             Response::forbidden();
         }

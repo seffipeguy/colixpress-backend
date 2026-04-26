@@ -145,22 +145,17 @@ class DispatcherController
 
     /**
      * POST /api/dispatch/orders/{id}/assign
-     * Assigner un livreur à une commande claimed
-     * Body: { "livreur_id": 5, "notes": "..." }
+     * Enregistrer une note d'assignation sur une commande claimed
+     * Body: { "notes": "..." }
      */
     public function assign(Request $request): void
     {
         $this->requireDispatcher();
 
         $orderId      = (int) $request->param('id');
-        $livreurId    = (int) $request->input('livreur_id');
         $notes        = $request->input('notes');
         $dispatcherId = Auth::userId();
         $db           = \App\Core\Database::getInstance();
-
-        if (!$livreurId) {
-            Response::error('livreur_id est requis', 422);
-        }
 
         $stmt = $db->prepare("SELECT id, claimed_by, status FROM orders WHERE id = :id");
         $stmt->execute(['id' => $orderId]);
@@ -173,21 +168,10 @@ class DispatcherController
             Response::forbidden('Vous devez d\'abord claim cette commande');
         }
 
-        $livreur = $db->prepare("SELECT user_id FROM livreur_profiles WHERE user_id = :id");
-        $livreur->execute(['id' => $livreurId]);
-        if (!$livreur->fetch()) {
-            Response::notFound('Livreur introuvable');
-        }
+        $db->prepare("UPDATE orders SET dispatcher_notes = :notes, status = 'accepted' WHERE id = :oid")
+           ->execute(['notes' => $notes, 'oid' => $orderId]);
 
-        $db->prepare("
-            INSERT INTO dispatcher_assignments (order_id, livreur_id, assigned_by, notes)
-            VALUES (:oid, :lid, :did, :notes)
-        ")->execute(['oid' => $orderId, 'lid' => $livreurId, 'did' => $dispatcherId, 'notes' => $notes]);
-
-        $db->prepare("UPDATE orders SET livreur_id = :lid, status = 'assigned' WHERE id = :oid")
-           ->execute(['lid' => $livreurId, 'oid' => $orderId]);
-
-        Response::success(['order_id' => $orderId, 'livreur_id' => $livreurId], 'Livreur assigné avec succès');
+        Response::success(['order_id' => $orderId], 'Commande assignée avec succès');
     }
 
     /**
@@ -246,18 +230,6 @@ class DispatcherController
            ->execute(['notes' => $notes, 'id' => $orderId]);
 
         Response::success(null, 'Note mise à jour');
-    }
-
-    /**
-     * GET /api/dispatch/livreurs
-     * Liste de tous les livreurs disponibles (toutes entreprises confondues)
-     */
-    public function livreurs(Request $request): void
-    {
-        $this->requireDispatcher();
-
-        $company = new Company();
-        Response::success($company->getAllLivreurs());
     }
 
     /**

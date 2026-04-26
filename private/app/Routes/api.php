@@ -102,9 +102,6 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/companies/me', App\Controllers\CompanyController::class, 'me');
     $router->post('/api/companies', App\Controllers\CompanyController::class, 'store');
     $router->put('/api/companies/{id}', App\Controllers\CompanyController::class, 'update');
-    $router->get('/api/companies/{id}/livreurs', App\Controllers\CompanyController::class, 'livreurs');
-    $router->post('/api/companies/{id}/livreurs', App\Controllers\CompanyController::class, 'addLivreur');
-    $router->delete('/api/companies/{id}/livreurs/{livreur_id}', App\Controllers\CompanyController::class, 'removeLivreur');
     $router->get('/api/companies/{id}/shops', App\Controllers\CompanyController::class, 'shops');
     $router->post('/api/companies/{id}/shops', App\Controllers\CompanyController::class, 'addShop');
     $router->delete('/api/companies/{id}/shops/{shop_id}', App\Controllers\CompanyController::class, 'removeShop');
@@ -184,7 +181,6 @@ $router->group('', [Auth::class], function ($router) {
     $router->post('/api/dispatch/orders/{id}/release',    App\Controllers\DispatcherController::class, 'release');
     $router->post('/api/dispatch/orders/{id}/assign',     App\Controllers\DispatcherController::class, 'assign');
     $router->patch('/api/dispatch/orders/{id}/notes',     App\Controllers\DispatcherController::class, 'updateNotes');
-    $router->get('/api/dispatch/livreurs',                App\Controllers\DispatcherController::class, 'livreurs');
     $router->get('/api/dispatch/companies',               App\Controllers\DispatcherController::class, 'companies');
 
     // --- Shops (owner management) ---
@@ -193,18 +189,6 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/shops/my', App\Controllers\ShopController::class, 'myShops');
     $router->put('/api/shops/{id}/approve', App\Controllers\ShopController::class, 'approve');
     $router->put('/api/shops/{id}/feature', App\Controllers\ShopController::class, 'feature');
-
-    // --- Livreur ---
-    $router->post('/api/livreur/register', App\Controllers\LivreurController::class, 'register');
-    $router->get('/api/livreur/profile', App\Controllers\LivreurController::class, 'profile');
-    $router->put('/api/livreur/profile', App\Controllers\LivreurController::class, 'updateProfile');
-    $router->put('/api/livreur/availability', App\Controllers\LivreurController::class, 'toggleAvailability');
-    $router->post('/api/livreur/location', App\Controllers\LivreurController::class, 'updateLocation');
-    $router->get('/api/livreur/nearby', App\Controllers\LivreurController::class, 'nearby');
-    $router->put('/api/livreur/{id}/approve', App\Controllers\LivreurController::class, 'approve');
-
-    // --- Livreur Ratings ---
-    $router->get('/api/livreur/{livreur_id}/ratings', App\Controllers\RatingController::class, 'livreurRatings');
 
     // --- Push Notifications (PWA) ---
     $router->post('/api/push/subscribe', App\Controllers\PushController::class, 'subscribe');

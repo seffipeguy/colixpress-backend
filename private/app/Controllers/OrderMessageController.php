@@ -37,7 +37,7 @@ class OrderMessageController
             Response::forbidden();
         }
 
-        if ($role === 'livreur' && (int) ($order['livreur_id'] ?? 0) !== $userId) {
+        if ($role === 'dispatcher' && (int) ($order['claimed_by'] ?? 0) !== $userId) {
             Response::forbidden();
         }
 
@@ -52,7 +52,6 @@ class OrderMessageController
         $role = Auth::role();
         return match ($role) {
             'admin'      => 'admin',
-            'livreur'    => 'livreur',
             'dispatcher' => 'dispatcher',
             default      => 'client',
         };
@@ -114,16 +113,7 @@ class OrderMessageController
         $pushData = ['screen' => 'order_messages', 'reference' => $order['reference']];
 
         if ($senderRole === 'client') {
-            // Notifier le livreur assigné
-            if (!empty($order['livreur_id'])) {
-                $push->sendToUser(
-                    (int) $order['livreur_id'],
-                    'Message client — ' . $order['reference'],
-                    $senderName . ' : ' . mb_substr($message, 0, 80),
-                    $pushData
-                );
-            }
-            // Notifier les dispatchers/admins via claimed_by
+            // Notifier le dispatcher assigné
             if (!empty($order['claimed_by'])) {
                 $push->sendToUser(
                     (int) $order['claimed_by'],

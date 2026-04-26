@@ -43,10 +43,10 @@ class Order extends Model
         return $this->paginate($page, $perPage, $where, $params);
     }
 
-    public function getByLivreur(int $livreurId, int $page, int $perPage, ?string $status = null): array
+    public function getByDispatcher(int $dispatcherId, int $page, int $perPage, ?string $status = null): array
     {
-        $where = 'livreur_id = :lid';
-        $params = ['lid' => $livreurId];
+        $where = 'claimed_by = :did';
+        $params = ['did' => $dispatcherId];
 
         if ($status) {
             $where .= ' AND status = :status';
@@ -81,11 +81,11 @@ class Order extends Model
         $stmt = $this->db->prepare("
             SELECT o.*,
                    uc.first_name AS client_first_name, uc.last_name AS client_last_name, uc.phone AS client_phone,
-                   ul.first_name AS livreur_first_name, ul.last_name AS livreur_last_name, ul.phone AS livreur_phone,
+                   ud.first_name AS dispatcher_first_name, ud.last_name AS dispatcher_last_name,
                    s.name AS shop_name
             FROM {$this->table} o
             JOIN users uc ON uc.id = o.client_id
-            LEFT JOIN users ul ON ul.id = o.livreur_id
+            LEFT JOIN users ud ON ud.id = o.claimed_by
             LEFT JOIN shops s ON s.id = o.shop_id
             WHERE {$field} = :val
             LIMIT 1

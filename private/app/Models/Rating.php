@@ -36,10 +36,6 @@ class Rating extends Model
         $result = $stmt->fetch();
         $avg = round((float) ($result['avg_score'] ?? 0), 2);
 
-        // Update livreur_profiles if exists
-        $this->db->prepare("UPDATE livreur_profiles SET rating_avg = :avg WHERE user_id = :uid")
-            ->execute(['avg' => $avg, 'uid' => $userId]);
-
         // Update shops if exists
         $this->db->prepare("UPDATE shops SET rating_avg = :avg WHERE owner_id = :uid")
             ->execute(['avg' => $avg, 'uid' => $userId]);

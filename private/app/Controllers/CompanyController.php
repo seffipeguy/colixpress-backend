@@ -7,7 +7,6 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Auth;
 use App\Models\Company;
-use App\Models\LivreurProfile;
 use App\Models\Shop;
 use App\Models\User;
 
@@ -100,8 +99,9 @@ class CompanyController extends Controller
     }
 
     /**
-     * GET /api/companies/{id}/livreurs
-     * List company livreurs
+     * GET /api/companies/{id}/members
+     * List company members (dispatchers)
+     * @deprecated use /members endpoint - kept for backward compat
      */
     public function livreurs(Request $request): void
     {
@@ -118,76 +118,28 @@ class CompanyController extends Controller
             Response::forbidden();
         }
 
-        $livreurs = $companyModel->getLivreurs($company['id']);
-        Response::success($livreurs);
+        $members = $companyModel->getMembers($company['id']);
+        Response::success($members);
     }
 
     /**
      * POST /api/companies/{id}/livreurs
-     * Add a livreur to company (by phone number)
+     * @deprecated
      */
     public function addLivreur(Request $request): void
     {
-        $this->requireRole('company_manager', 'admin');
-        $request->validate(['phone']);
-        
-        $companyModel = new Company();
-        $company = $companyModel->find((int) $request->param('id'));
-
-        if (!$company) {
-            Response::notFound('Company not found');
-        }
-
-        if (!Auth::isAdmin() && $company['owner_id'] !== $this->userId()) {
-            Response::forbidden();
-        }
-
-        // Find user by phone
-        $userModel = new User();
-        // Assuming country_id is needed, or search globally. For now, simple search logic would be needed in User model.
-        // This part assumes a method exists or we use raw query
-        $phone = $request->input('phone');
-        
-        // Simplified search for user
-        $stmt = $userModel->getDb()->prepare("SELECT id, role FROM users WHERE phone LIKE :phone LIMIT 1");
-        $stmt->execute(['phone' => "%$phone"]);
-        $user = $stmt->fetch();
-
-        if (!$user) {
-            Response::notFound('User not found with this phone');
-        }
-
-        if ($user['role'] !== 'livreur') {
-            Response::error('User is not a livreur', 400);
-        }
-
-        $companyModel->addLivreur($company['id'], $user['id']);
-        Response::success([], 'Livreur added to company');
+        Response::error('Endpoint supprimé. Les livreurs ne font plus partie du système.', 410);
     }
 
     /**
      * DELETE /api/companies/{id}/livreurs/{livreur_id}
-     * Remove livreur from company
+     * @deprecated
      */
     public function removeLivreur(Request $request): void
     {
-        $this->requireRole('company_manager', 'admin');
-        
-        $companyModel = new Company();
-        $company = $companyModel->find((int) $request->param('id'));
-        $livreurId = (int) $request->param('livreur_id');
-
-        if (!$company) {
-            Response::notFound('Company not found');
-        }
-
-        if (!Auth::isAdmin() && $company['owner_id'] !== $this->userId()) {
-            Response::forbidden();
-        }
-
-        $companyModel->removeLivreur($company['id'], $livreurId);
-        Response::success([], 'Livreur removed from company');
+        Response::error('Endpoint supprimé. Les livreurs ne font plus partie du système.', 410);
     }
+
 
     /**
      * GET /api/companies/{id}/shops

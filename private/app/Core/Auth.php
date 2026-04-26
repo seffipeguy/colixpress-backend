@@ -97,11 +97,6 @@ class Auth
         return self::role() === 'admin';
     }
 
-    public static function isLivreur(): bool
-    {
-        return self::role() === 'livreur';
-    }
-
     public static function isShopOwner(): bool
     {
         return self::role() === 'shop_owner';

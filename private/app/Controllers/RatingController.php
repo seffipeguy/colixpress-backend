@@ -43,10 +43,6 @@ class RatingController extends Controller
             Response::forbidden('Only the client can rate this order');
         }
 
-        if (!$order['livreur_id']) {
-            Response::error('No livreur assigned to this order', 422);
-        }
-
         // Check if already rated
         $ratingModel = new Rating();
         if ($ratingModel->findByOrderAndUser($orderId, $this->userId())) {
@@ -56,24 +52,11 @@ class RatingController extends Controller
         $id = $ratingModel->create([
             'order_id'   => $orderId,
             'rated_by'   => $this->userId(),
-            'rated_user' => (int) $order['livreur_id'],
+            'rated_user' => (int) ($order['claimed_by'] ?? 0),
             'score'      => $score,
             'comment'    => $request->input('comment'),
         ]);
 
-        // Recalculate average rating
-        $ratingModel->recalculateAverage((int) $order['livreur_id']);
-
         Response::success($ratingModel->find($id), 'Rating submitted', 201);
-    }
-
-    /**
-     * GET /api/livreur/{livreur_id}/ratings
-     */
-    public function livreurRatings(Request $request): void
-    {
-        $ratingModel = new Rating();
-        $ratings = $ratingModel->getForUser((int) $request->param('livreur_id'));
-        Response::success($ratings);
     }
 }

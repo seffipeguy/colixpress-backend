@@ -12,7 +12,6 @@ use App\Models\OrderItem;
 use App\Models\OrderMedia;
 use App\Models\OrderMessage;
 use App\Models\OrderStatusHistory;
-use App\Models\LivreurProfile;
 use App\Models\Notification;
 use App\Models\Shop;
 use App\Services\WalletService;
@@ -37,19 +36,6 @@ class OrderController extends Controller
         $orderItemModel = new OrderItem();
         $order['items'] = $orderItemModel->getByOrder($order['id']);
 
-        // Get livreur location
-        if (!empty($order['livreur_id'])) {
-            $livreurModel = new LivreurProfile();
-            $livreurProfile = $livreurModel->findWithDetails($order['livreur_id']);
-            
-            if ($livreurProfile) {
-                $order['livreur_location'] = [
-                    'current_lat' => $livreurProfile['current_lat'],
-                    'current_lng' => $livreurProfile['current_lng'],
-                    'last_location_at' => $livreurProfile['last_location_at']
-                ];
-            }
-        }
 
         // Get status history
         $historyModel = new OrderStatusHistory();
@@ -248,15 +234,15 @@ class OrderController extends Controller
         $orderModel = new Order();
         $status = $request->query('status');
 
-        if (Auth::isLivreur()) {
-            $result = $orderModel->getByLivreur($this->userId(), $request->page(), $request->perPage(), $status);
-        } elseif (Auth::isAdmin()) {
+        if (Auth::isAdmin()) {
             $result = $orderModel->paginate($request->page(), $request->perPage());
+        } elseif (Auth::role() === 'dispatcher') {
+            $result = $orderModel->getByDispatcher($this->userId(), $request->page(), $request->perPage(), $status);
         } else {
             $result = $orderModel->getByClient($this->userId(), $request->page(), $request->perPage(), $status);
         }
 
-        $isClient  = !Auth::isAdmin() && !Auth::isLivreur();
+        $isClient = !Auth::isAdmin() && Auth::role() !== 'dispatcher';
         $mediaModel = new OrderMedia();
         $msgModel   = new OrderMessage();
 
@@ -273,11 +259,11 @@ class OrderController extends Controller
     }
 
     /**
-     * GET /api/orders/pending — For livreurs to see available orders
+     * GET /api/orders/pending — Commandes en attente d'assignation (dispatcher/admin)
      */
     public function pending(Request $request): void
     {
-        $this->requireRole('livreur', 'admin');
+        $this->requireRole('dispatcher', 'admin');
         $orderModel = new Order();
         $result = $orderModel->getPending($request->page(), $request->perPage());
         Response::paginated($result['data'], $result['total'], $request->page(), $request->perPage());
@@ -295,10 +281,10 @@ class OrderController extends Controller
             Response::notFound('Order not found');
         }
 
-        // Authorization: client, assigned livreur, or admin
+        // Authorization: client, dispatcher, or admin
         if (!Auth::isAdmin()
             && (int) $order['client_id'] !== $this->userId()
-            && (int) ($order['livreur_id'] ?? 0) !== $this->userId()) {
+            && (int) ($order['claimed_by'] ?? 0) !== $this->userId()) {
             Response::forbidden();
         }
 
@@ -433,11 +419,11 @@ class OrderController extends Controller
     }
 
     /**
-     * PUT /api/orders/{reference}/accept — Livreur accepts the order
+     * PUT /api/orders/{reference}/accept — Dispatcher accepts the order
      */
     public function accept(Request $request): void
     {
-        $this->requireRole('livreur', 'admin');
+        $this->requireRole('dispatcher', 'admin');
 
         $orderModel = new Order();
         $order = $orderModel->findByReference($request->param('reference'));
@@ -449,8 +435,8 @@ class OrderController extends Controller
             Response::error('Order cannot be accepted (current status: ' . $order['status'] . ')', 422);
         }
 
-        $orderModel->update((int) $order['id'], ['livreur_id' => $this->userId()]);
-        $orderModel->updateStatus((int) $order['id'], 'accepted', $this->userId(), 'Accepted by livreur');
+        $orderModel->update((int) $order['id'], ['claimed_by' => $this->userId()]);
+        $orderModel->updateStatus((int) $order['id'], 'accepted', $this->userId(), 'Accepted by dispatcher');
 
         // Débit wallet si paiement par portefeuille (au moment de l'acceptation)
         if ($order['payment_method'] === 'wallet' && (int) $order['price'] > 0) {
@@ -482,8 +468,8 @@ class OrderController extends Controller
         // Notify client
         Notification::send(
             (int) $order['client_id'],
-            'Livreur assigned',
-            'A delivery driver has been assigned to your order ' . $order['reference'],
+            'Commande acceptée',
+            'Votre commande ' . $order['reference'] . ' a été prise en charge',
             'order_update',
             ['order_id' => (int) $order['id'], 'order_reference' => $order['reference']]
         );
@@ -506,9 +492,9 @@ class OrderController extends Controller
             Response::notFound('Order not found');
         }
 
-        // Only assigned livreur or admin can update status
-        if (!Auth::isAdmin() && (int) ($order['livreur_id'] ?? 0) !== $this->userId()) {
-            Response::forbidden('Only the assigned livreur can update status');
+        // Only dispatcher who claimed or admin can update status
+        if (!Auth::isAdmin() && (int) ($order['claimed_by'] ?? 0) !== $this->userId()) {
+            Response::forbidden('Only the assigned dispatcher can update status');
         }
 
         $newStatus = $request->input('status');
@@ -535,16 +521,6 @@ class OrderController extends Controller
 
         $orderModel->updateStatus((int) $order['id'], $newStatus, $this->userId(), $comment);
 
-        // Update livreur stats on delivery
-        if ($newStatus === 'delivered') {
-            $livreurModel = new LivreurProfile();
-            $profile = $livreurModel->findByUserId($this->userId());
-            if ($profile) {
-                $livreurModel->update((int) $profile['id'], [
-                    'total_deliveries' => (int) $profile['total_deliveries'] + 1,
-                ]);
-            }
-        }
 
         // Notify client
         Notification::send(
@@ -595,12 +571,12 @@ class OrderController extends Controller
             );
         }
 
-        // Notify livreur if assigned
-        if ($order['livreur_id']) {
+        // Notify dispatcher if claimed
+        if (!empty($order['claimed_by'])) {
             Notification::send(
-                (int) $order['livreur_id'],
-                'Order cancelled',
-                "Order {$order['reference']} has been cancelled by the client",
+                (int) $order['claimed_by'],
+                'Commande annulée',
+                "La commande {$order['reference']} a été annulée par le client",
                 'order_update',
                 ['order_id' => (int) $order['id'], 'order_reference' => $order['reference']]
             );
@@ -610,7 +586,7 @@ class OrderController extends Controller
     }
 
     /**
-     * GET /api/orders/{reference}/tracking — Get livreur GPS trail for an order
+     * GET /api/orders/{reference}/tracking — Order status history
      */
     public function tracking(Request $request): void
     {
@@ -621,32 +597,16 @@ class OrderController extends Controller
             Response::notFound('Order not found');
         }
 
-        if (!Auth::isAdmin()
-            && (int) $order['client_id'] !== $this->userId()
-            && (int) ($order['livreur_id'] ?? 0) !== $this->userId()) {
+        if (!Auth::isAdmin() && (int) $order['client_id'] !== $this->userId()) {
             Response::forbidden();
         }
 
-        $locationModel = new \App\Models\LivreurLocation();
-        $trail = $locationModel->getTrail((int) $order['id']);
-
-        // Also get current position from profile
-        $currentPos = null;
-        if ($order['livreur_id']) {
-            $livreurModel = new LivreurProfile();
-            $profile = $livreurModel->findByUserId((int) $order['livreur_id']);
-            if ($profile && $profile['current_lat']) {
-                $currentPos = [
-                    'latitude'  => $profile['current_lat'],
-                    'longitude' => $profile['current_lng'],
-                    'updated_at'=> $profile['last_location_at'],
-                ];
-            }
-        }
+        $historyModel = new OrderStatusHistory();
+        $history = $historyModel->getByOrder((int) $order['id']);
 
         Response::success([
-            'current_position' => $currentPos,
-            'trail'            => $trail,
+            'status'  => $order['status'],
+            'history' => $history,
         ]);
     }
 
@@ -790,11 +750,8 @@ class OrderController extends Controller
         $stmt = $db->prepare("
             SELECT o.id, o.reference, o.status, o.created_at, o.claimed_by,
                    o.pickup_address, o.dropoff_address, o.price,
-                   o.livreur_id,
-                   CONCAT(lv.first_name, ' ', lv.last_name) AS livreur_name,
                    COALESCE(unread.cnt, 0) AS unread_messages
             FROM orders o
-            LEFT JOIN users lv ON lv.id = o.livreur_id
             LEFT JOIN (
                 SELECT order_id, COUNT(*) AS cnt
                 FROM order_messages
