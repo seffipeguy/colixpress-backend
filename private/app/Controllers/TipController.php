@@ -31,13 +31,16 @@ class TipController extends Controller
         $tips = $tipModel->getActiveForPage($page, $userId, $this->userRole());
 
         // Formater la réponse (ne garder que l'essentiel)
-        $formatted = array_map(fn($t) => [
-            'id' => (int) $t['id'],
-            'tip_key' => $t['tip_key'],
-            'title' => $t['title'],
-            'html_content' => $t['html_content'],
-            'frequency' => $t['frequency'],
-        ], $tips);
+        $formatted = [];
+        foreach ($tips as $t) {
+            $formatted[] = [
+                'id' => (int) $t['id'],
+                'tip_key' => $t['tip_key'] ?? '',
+                'title' => $t['title'] ?? '',
+                'html_content' => $t['html_content'] ?? '',
+                'frequency' => $t['frequency'] ?? 'once',
+            ];
+        }
 
         Response::success($formatted);
     }
