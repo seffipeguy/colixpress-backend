@@ -109,7 +109,7 @@ class OrderMessageController
 
         // Notifications push aux destinataires
         $push = new PushNotificationService();
-        $sender = Auth::user();
+        $sender = Auth::user() ?? [];
         $senderName = trim(($sender['first_name'] ?? '') . ' ' . ($sender['last_name'] ?? ''));
         $pushData = ['screen' => 'order_messages', 'reference' => $order['reference']];
 
