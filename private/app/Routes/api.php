@@ -92,6 +92,12 @@ $router->group('', [Auth::class], function ($router) {
     $router->post('/api/templates/{slug}/media', App\Controllers\OrderTemplateController::class, 'uploadMedia');
     $router->delete('/api/templates/{slug}/media', App\Controllers\OrderTemplateController::class, 'deleteMedia');
 
+    // --- Tips (Aide contextuelle) ---
+    $router->get('/api/tips', App\Controllers\TipController::class, 'index');
+    $router->post('/api/tips/{id}/seen', App\Controllers\TipController::class, 'markSeen');
+    $router->get('/api/tips/history', App\Controllers\TipController::class, 'history');
+    $router->delete('/api/tips/reset', App\Controllers\TipController::class, 'reset');
+
     // --- Companies ---
     $router->get('/api/companies/me', App\Controllers\CompanyController::class, 'me');
     $router->post('/api/companies', App\Controllers\CompanyController::class, 'store');
@@ -268,6 +274,12 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/promotions/{id}', App\Controllers\PromotionController::class, 'show');
     $router->put('/api/promotions/{id}', App\Controllers\PromotionController::class, 'update');
     $router->delete('/api/promotions/{id}', App\Controllers\PromotionController::class, 'destroy');
+
+    // --- Tips Admin ---
+    $router->get('/api/admin/tips', App\Controllers\TipController::class, 'adminList');
+    $router->post('/api/admin/tips', App\Controllers\TipController::class, 'adminCreate');
+    $router->put('/api/admin/tips/{id}', App\Controllers\TipController::class, 'adminUpdate');
+    $router->delete('/api/admin/tips/{id}', App\Controllers\TipController::class, 'adminDelete');
 
     // --- Banners (admin) ---
     $router->get('/api/admin/banners', App\Controllers\BannerController::class, 'adminIndex');

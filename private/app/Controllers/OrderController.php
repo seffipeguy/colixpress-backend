@@ -85,6 +85,7 @@ class OrderController extends Controller
             'dropoff_contact_name' => $request->input('dropoff_contact_name'),
             'dropoff_contact_phone'=> $request->input('dropoff_contact_phone'),
             'payment_method'       => $request->input('payment_method', 'cash'),
+            'payment_timing'       => $request->input('payment_timing', 'pickup'),
             'notes'                => $request->input('notes'),
             'pickup_instructions'  => $request->input('pickup_instructions'),
             'delivery_instructions'=> $request->input('delivery_instructions'),
@@ -355,6 +356,7 @@ class OrderController extends Controller
             'dropoff_address', 'dropoff_lat', 'dropoff_lng', 'dropoff_contact_name', 'dropoff_contact_phone',
             'package_description', 'package_size', 'package_weight_kg', 'package_value',
             'notes', 'pickup_instructions', 'delivery_instructions', 'pickup_scheduled_at', 'scheduled_at', 'payment_method',
+            'payment_timing',
             'is_round_trip'
         ];
 

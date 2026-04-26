@@ -86,6 +86,9 @@ class Auth
 
     public static function role(): ?string
     {
+        if (self::$currentUser === null) {
+            return null;
+        }
         return self::$currentUser['role'] ?? null;
     }
 

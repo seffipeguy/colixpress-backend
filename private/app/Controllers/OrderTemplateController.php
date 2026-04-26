@@ -48,9 +48,18 @@ class OrderTemplateController extends Controller
             $defaultValues = json_decode($defaultValues, true) ?? [];
         }
 
-        // Valeur par défaut pour le mode de paiement
+        // Valeurs par défaut
         if (empty($defaultValues['payment_method'])) {
             $defaultValues['payment_method'] = 'cash';
+        }
+        if (empty($defaultValues['payment_timing'])) {
+            $defaultValues['payment_timing'] = 'pickup';
+        }
+        if (!isset($defaultValues['is_round_trip'])) {
+            $defaultValues['is_round_trip'] = 0;
+        } else {
+            // Convertir en entier (0 ou 1)
+            $defaultValues['is_round_trip'] = $defaultValues['is_round_trip'] ? 1 : 0;
         }
 
         if (!empty($mediaRefs) && is_array($mediaRefs)) {
@@ -157,6 +166,17 @@ class OrderTemplateController extends Controller
             $incoming      = $request->input('default_values');
             if (is_string($incoming)) {
                 $incoming = json_decode($incoming, true) ?? [];
+            }
+            // Valider payment_timing si présent
+            if (isset($incoming['payment_timing'])) {
+                $validTimings = ['pickup', 'delivery'];
+                if (!in_array($incoming['payment_timing'], $validTimings)) {
+                    $incoming['payment_timing'] = 'pickup';
+                }
+            }
+            // Convertir is_round_trip en entier si présent
+            if (isset($incoming['is_round_trip'])) {
+                $incoming['is_round_trip'] = $incoming['is_round_trip'] ? 1 : 0;
             }
             $updatable['default_values'] = json_encode(array_merge($current, $incoming), JSON_UNESCAPED_UNICODE);
         }
@@ -326,8 +346,9 @@ class OrderTemplateController extends Controller
         // Merge default values into order data
         $orderData = array_merge($defaultValues, [
             'reference' => $reference,
-            'client_id' => $template['user_id'], 
-            'status' => 'pending', 
+            'client_id' => $template['user_id'],
+            'source_template_id' => (int) $template['id'], // Track which template created this order
+            'status' => 'pending',
             'order_type' => 'direct',
             'notes' => ($defaultValues['notes'] ?? '') . " [Template: {$template['name']}]"
         ]);

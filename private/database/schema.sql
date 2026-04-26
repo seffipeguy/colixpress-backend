@@ -208,6 +208,7 @@ CREATE TABLE orders (
     external_reference VARCHAR(100) NULL,
     order_type ENUM('direct','shop') DEFAULT 'direct',
     client_id INT NOT NULL,
+    source_template_id INT NULL COMMENT 'ID du template d\'où provient la commande (si créée via template)',
     api_key_id INT NULL,
     livreur_id INT NULL,
     shop_id INT NULL,
@@ -242,8 +243,9 @@ CREATE TABLE orders (
     status ENUM('pending','accepted','picking_up','picked_up','in_transit','delivered','cancelled') DEFAULT 'pending',
 
     -- Paiement
-    payment_method ENUM('cash','mobile_money') DEFAULT 'cash',
+    payment_method ENUM('cash','mobile_money','wallet') DEFAULT 'cash',
     payment_status ENUM('pending','paid','refunded') DEFAULT 'pending',
+    payment_timing ENUM('pickup','delivery') DEFAULT 'pickup' COMMENT 'Quand le paiement doit être collecté: au retrait ou à la livraison',
 
     -- Divers
     notes TEXT NULL,
@@ -259,10 +261,12 @@ CREATE TABLE orders (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_orders_client FOREIGN KEY (client_id) REFERENCES users(id),
+    CONSTRAINT fk_orders_source_template FOREIGN KEY (source_template_id) REFERENCES order_templates(id) ON DELETE SET NULL,
     CONSTRAINT fk_orders_apikey FOREIGN KEY (api_key_id) REFERENCES api_keys(id),
     CONSTRAINT fk_orders_livreur FOREIGN KEY (livreur_id) REFERENCES users(id),
     CONSTRAINT fk_orders_shop FOREIGN KEY (shop_id) REFERENCES shops(id),
     INDEX idx_orders_client (client_id),
+    INDEX idx_orders_source_template (source_template_id),
     INDEX idx_orders_livreur (livreur_id),
     INDEX idx_orders_status (status),
     INDEX idx_orders_shop (shop_id),
