@@ -27,22 +27,26 @@ class TipController extends Controller
             return;
         }
 
-        $tipModel = new Tip();
-        $tips = $tipModel->getActiveForPage($page, $userId, $this->userRole());
+        try {
+            $tipModel = new Tip();
+            $tips = $tipModel->getActiveForPage($page, $userId, $this->userRole());
 
-        // Formater la réponse (ne garder que l'essentiel)
-        $formatted = [];
-        foreach ($tips as $t) {
-            $formatted[] = [
-                'id' => (int) $t['id'],
-                'tip_key' => $t['tip_key'] ?? '',
-                'title' => $t['title'] ?? '',
-                'html_content' => $t['html_content'] ?? '',
-                'frequency' => $t['frequency'] ?? 'once',
-            ];
+            // Formater la réponse (ne garder que l'essentiel)
+            $formatted = [];
+            foreach ($tips as $t) {
+                $formatted[] = [
+                    'id' => (int) $t['id'],
+                    'tip_key' => $t['tip_key'] ?? '',
+                    'title' => $t['title'] ?? '',
+                    'html_content' => $t['html_content'] ?? '',
+                    'frequency' => $t['frequency'] ?? 'once',
+                ];
+            }
+
+            Response::success($formatted);
+        } catch (\Exception $e) {
+            Response::error('Error: ' . $e->getMessage(), 500);
         }
-
-        Response::success($formatted);
     }
 
     /**
