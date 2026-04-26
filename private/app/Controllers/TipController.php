@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
-use App\Models\Tip;
+use App\Models\TipSimple;
 
 class TipController extends Controller
 {
@@ -28,8 +28,8 @@ class TipController extends Controller
         }
 
         try {
-            $tipModel = new Tip();
-            $tips = $tipModel->getActiveForPage($page, $userId, $this->userRole());
+            $tipModel = new TipSimple();
+            $tips = $tipModel->getForPage($page, $userId, $this->userRole());
 
             // Formater la réponse (ne garder que l'essentiel)
             $formatted = [];
@@ -66,7 +66,7 @@ class TipController extends Controller
         $dismissed = $request->input('dismissed', false);
         $completed = $request->input('completed', false);
 
-        $tipModel = new Tip();
+        $tipModel = new TipSimple();
         $success = $tipModel->markAsSeen($tipId, $userId, (bool) $dismissed, (bool) $completed);
 
         if ($success) {
@@ -88,7 +88,7 @@ class TipController extends Controller
             return;
         }
 
-        $tipModel = new Tip();
+        $tipModel = new TipSimple();
         $history = $tipModel->getSeenByUser($userId);
 
         Response::success($history);
@@ -106,7 +106,7 @@ class TipController extends Controller
             return;
         }
 
-        $tipModel = new Tip();
+        $tipModel = new TipSimple();
         $tipModel->resetForUser($userId);
 
         Response::success(null, 'Tips réinitialisés');
@@ -124,7 +124,7 @@ class TipController extends Controller
     {
         $this->requireRole('admin');
 
-        $tipModel = new Tip();
+        $tipModel = new TipSimple();
         $tips = $tipModel->all();
 
         Response::success($tips);
@@ -140,7 +140,7 @@ class TipController extends Controller
 
         $request->validate(['page_route', 'tip_key', 'html_content']);
 
-        $tipModel = new Tip();
+        $tipModel = new TipSimple();
 
         // Vérifier si le tip_key existe déjà
         $existing = $tipModel->findBy('tip_key', $request->input('tip_key'));
@@ -174,7 +174,7 @@ class TipController extends Controller
     {
         $this->requireRole('admin');
 
-        $tipModel = new Tip();
+        $tipModel = new TipSimple();
         $tip = $tipModel->find((int) $request->param('id'));
 
         if (!$tip) {
@@ -215,7 +215,7 @@ class TipController extends Controller
     {
         $this->requireRole('admin');
 
-        $tipModel = new Tip();
+        $tipModel = new TipSimple();
         $tip = $tipModel->find((int) $request->param('id'));
 
         if (!$tip) {
