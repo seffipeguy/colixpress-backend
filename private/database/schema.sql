@@ -598,3 +598,114 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
     INDEX idx_customer_phone (customer_phone),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- COMPANY WALLETS - Système de crédit confiance entreprises
+-- ============================================
+CREATE TABLE company_wallets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT NOT NULL,
+
+    -- Solde (peut être négatif jusqu'à credit_limit)
+    balance INT NOT NULL DEFAULT 0 COMMENT 'Solde en XAF (négatif = dette)',
+    currency VARCHAR(3) DEFAULT 'XAF',
+
+    -- Système de crédit confiance
+    credit_limit INT NOT NULL DEFAULT 100000 COMMENT 'Limite de crédit autorisée (découvert max)',
+    deposit_amount INT DEFAULT 0 COMMENT 'Caution versée initialement (optionnel)',
+
+    -- Alertes et seuils
+    low_balance_threshold INT DEFAULT 20000 COMMENT 'Seuil alerte solde faible',
+    alert_email VARCHAR(255) NULL COMMENT 'Email pour les alertes de solde',
+
+    -- Statut
+    status ENUM('active', 'suspended', 'closed') DEFAULT 'active',
+    suspended_at DATETIME NULL,
+    suspended_reason VARCHAR(255) NULL,
+
+    -- Méta
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_company_wallet_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_company_wallet (company_id),
+    INDEX idx_company_wallet_status (status),
+    INDEX idx_company_wallet_balance (balance)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- COMPANY WALLET TRANSACTIONS - Historique mouvements
+-- ============================================
+CREATE TABLE company_wallet_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    company_wallet_id INT NOT NULL,
+
+    -- Contexte commande
+    order_id INT NULL COMMENT 'Commande liée (si applicable)',
+    dispatcher_id INT NULL COMMENT 'Dispatcher ayant fait l\'action',
+
+    -- Type de transaction
+    type ENUM(
+        'deposit_initial',       -- Caution/dépôt initial
+        'manual_recharge',       -- Rechargement manuel par admin
+        'auto_recharge',         -- Rechargement automatique
+        'cash_order_commission', -- Commission prélevée sur commande cash
+        'wallet_payment_credit', -- Reverse après paiement wallet client
+        'commission_colixpress', -- Commission ColiXpress (séparée)
+        'withdrawal',            -- Retrait demandé par entreprise
+        'refund',                -- Remboursement
+        'adjustment'             -- Ajustement manuel admin
+    ) NOT NULL,
+
+    -- Montants
+    gross_amount INT NULL COMMENT 'Montant total commande',
+    commission_amount INT NULL COMMENT 'Commission ColiXpress prélevée',
+    net_amount INT NULL COMMENT 'Montant net pour l\'entreprise',
+    amount INT NOT NULL COMMENT 'Montant de la transaction (débit négatif, crédit positif)',
+
+    -- Solde après opération
+    balance_after INT NOT NULL COMMENT 'Solde du wallet après cette transaction',
+
+    -- Description et méta
+    description VARCHAR(500) NULL,
+    reference VARCHAR(100) NULL COMMENT 'Référence externe (ex: ID transaction mobile money)',
+    metadata JSON NULL COMMENT 'Données additionnelles',
+
+    -- Pour les rechargements/withdrawals
+    payment_method VARCHAR(50) NULL COMMENT 'mtn_cm, orange_cm, bank_transfer, etc.',
+    payment_provider_id INT NULL,
+    payment_status ENUM('pending', 'completed', 'failed') NULL,
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_cwt_wallet FOREIGN KEY (company_wallet_id) REFERENCES company_wallets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cwt_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
+    CONSTRAINT fk_cwt_dispatcher FOREIGN KEY (dispatcher_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_cwt_provider FOREIGN KEY (payment_provider_id) REFERENCES payment_providers(id) ON DELETE SET NULL,
+    INDEX idx_cwt_wallet (company_wallet_id),
+    INDEX idx_cwt_order (order_id),
+    INDEX idx_cwt_type (type),
+    INDEX idx_cwt_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- SETTINGS - Configuration système wallet entreprise
+-- ============================================
+INSERT INTO settings (setting_key, setting_value, description, category) VALUES
+-- Commission ColiXpress (% configurable)
+('commission_rate_percent', '10.00', 'Pourcentage de commission ColiXpress prélevée sur chaque commande', 'financial'),
+
+-- Système de crédit confiance
+('company_default_credit_limit', '100000', 'Limite de crédit par défaut pour les nouvelles entreprises (XAF)', 'financial'),
+('company_default_low_threshold', '20000', 'Seuil d\'alerte solde faible par défaut (XAF)', 'financial'),
+
+-- Alerte et blocage
+('company_wallet_alert_threshold_percent', '80', 'Pourcentage de la limite de crédit utilisé avant alerte (ex: 80 = alerte à -80k sur 100k)', 'financial'),
+('company_wallet_block_if_over_limit', '1', 'Bloquer les validations si le crédit est dépassé (1=oui, 0=non)', 'financial'),
+
+-- Rechargement automatique (optionnel)
+('company_auto_recharge_enabled', '0', 'Activer le rechargement automatique (1=oui, 0=non)', 'financial'),
+('company_auto_recharge_threshold', '10000', 'Seuil de déclenchement rechargement auto (XAF)', 'financial'),
+('company_auto_recharge_amount', '50000', 'Montant rechargement automatique (XAF)', 'financial')
+ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
