@@ -559,17 +559,18 @@ class OrderController extends Controller
         $orderModel->update((int) $order['id'], ['cancellation_reason' => $reason]);
         $orderModel->updateStatus((int) $order['id'], 'cancelled', $this->userId(), $reason);
 
-        // Remboursement automatique si paiement par wallet
-        if ($order['payment_method'] === 'wallet' && (int) $order['price'] > 0) {
-            $walletService = new WalletService();
-            $walletService->credit(
-                (int) $order['client_id'],
-                (int) $order['price'],
-                'refund',
-                'Remboursement annulation commande ' . $order['reference'],
-                $order['reference']
-            );
-        }
+        // REMBOURSEMENT DESACTIVE - sera fait manuellement au besoin
+        // Le remboursement automatique est désactivé. Contactez l'admin pour un remboursement manuel.
+        // if ($order['payment_method'] === 'wallet' && (int) $order['price'] > 0) {
+        //     $walletService = new WalletService();
+        //     $walletService->credit(
+        //         (int) $order['client_id'],
+        //         (int) $order['price'],
+        //         'refund',
+        //         'Remboursement annulation commande ' . $order['reference'],
+        //         $order['reference']
+        //     );
+        // }
 
         // Notify dispatcher if claimed
         if (!empty($order['claimed_by'])) {
