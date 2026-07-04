@@ -146,6 +146,9 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/carts/{reference}', App\Controllers\CartController::class, 'show');
     $router->post('/api/carts/{reference}/close', App\Controllers\CartController::class, 'close');
 
+    // --- Guest Orders (public) ---
+    $router->post('/api/orders/guest', App\Controllers\OrderController::class, 'guestStore');
+
     // --- Orders ---
     $router->get('/api/orders', App\Controllers\OrderController::class, 'index');
     $router->post('/api/orders', App\Controllers\OrderController::class, 'store');

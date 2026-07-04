@@ -227,6 +227,191 @@ class OrderController extends Controller
     }
 
     /**
+     * POST /api/orders/guest
+     * Commande invité - pas d'authentification requise
+     * Champs supplémentaires requis: country_id, phone, first_name, last_name
+     */
+    public function guestStore(Request $request): void
+    {
+        $request->validate(['country_id', 'phone', 'first_name', 'last_name']);
+
+        $countryId = (int) $request->input('country_id');
+        $phone = trim($request->input('phone'));
+        $firstName = trim($request->input('first_name'));
+        $lastName = trim($request->input('last_name'));
+
+        // Valider le pays
+        $countryModel = new \App\Models\Country();
+        $country = $countryModel->find($countryId);
+        if (!$country) {
+            Response::error('Pays invalide', 422);
+        }
+
+        // Valider la longueur du téléphone
+        if (strlen($phone) !== (int) $country['phone_length']) {
+            Response::error("Le numéro doit contenir {$country['phone_length']} chiffres pour {$country['name']}", 422);
+        }
+
+        // Valider les champs de base
+        $request->validate(['order_type', 'dropoff_address', 'dropoff_lat', 'dropoff_lng', 'dropoff_contact_name', 'dropoff_contact_phone']);
+
+        $orderModel = new Order();
+        $orderType = $request->input('order_type', 'direct');
+
+        // Créer ou récupérer le compte invité
+        $userModel = new \App\Models\User();
+        $user = $userModel->findByPhone($countryId, $phone);
+
+        if (!$user) {
+            // Créer un compte invité non vérifié
+            $userId = $userModel->create([
+                'country_id'  => $countryId,
+                'phone'       => $phone,
+                'first_name'  => $firstName,
+                'last_name'   => $lastName,
+                'role'        => 'client',
+                'is_verified' => 0,
+                'is_active'   => 1,
+            ]);
+            $user = $userModel->find($userId);
+        } else {
+            // Mettre à jour le nom si différent
+            if ($user['first_name'] !== $firstName || $user['last_name'] !== $lastName) {
+                $userModel->update((int) $user['id'], [
+                    'first_name' => $firstName,
+                    'last_name'  => $lastName,
+                ]);
+            }
+        }
+
+        $data = [
+            'reference'            => $orderModel->generateReference(),
+            'order_type'           => $orderType,
+            'client_id'            => (int) $user['id'],
+            'dropoff_address'      => $request->input('dropoff_address'),
+            'dropoff_lat'          => $request->input('dropoff_lat'),
+            'dropoff_lng'          => $request->input('dropoff_lng'),
+            'dropoff_contact_name' => $request->input('dropoff_contact_name'),
+            'dropoff_contact_phone'=> $request->input('dropoff_contact_phone'),
+            'payment_method'       => $request->input('payment_method', 'cash'),
+            'payment_timing'       => $request->input('payment_timing', 'pickup'),
+            'notes'                => $request->input('notes'),
+            'pickup_instructions'  => $request->input('pickup_instructions'),
+            'delivery_instructions'=> $request->input('delivery_instructions'),
+            'pickup_scheduled_at'  => $request->input('pickup_scheduled_at'),
+            'scheduled_at'         => $request->input('scheduled_at'),
+            'status'               => 'pending',
+            'is_guest_order'       => 1,
+        ];
+
+        // Logique identique à store() pour le reste
+        if ($orderType === 'shop') {
+            $request->validate(['shop_id']);
+            $shopModel = new Shop();
+            $shop = $shopModel->find((int) $request->input('shop_id'));
+            if (!$shop || !$shop['is_approved']) {
+                Response::error('Boutique introuvable ou non approuvée', 404);
+            }
+
+            $data['shop_id']              = (int) $shop['id'];
+            $data['pickup_address']       = $shop['address'];
+            $data['pickup_lat']           = $shop['latitude'];
+            $data['pickup_lng']           = $shop['longitude'];
+            $data['pickup_contact_name']  = $shop['name'];
+            $data['pickup_contact_phone'] = $shop['phone'];
+        } else {
+            $request->validate(['pickup_address', 'pickup_lat', 'pickup_lng', 'pickup_contact_name', 'pickup_contact_phone', 'package_description', 'package_size']);
+            $data['pickup_address']       = $request->input('pickup_address');
+            $data['pickup_lat']           = $request->input('pickup_lat');
+            $data['pickup_lng']           = $request->input('pickup_lng');
+            $data['pickup_contact_name']  = $request->input('pickup_contact_name');
+            $data['pickup_contact_phone'] = $request->input('pickup_contact_phone');
+            $data['package_description']  = $request->input('package_description', null);
+            $data['package_size']         = $request->input('package_size');
+            $data['package_weight_kg']    = $request->input('package_weight_kg');
+        }
+
+        $data['package_value'] = (int) $request->input('package_value', 0);
+
+        // Calcul du prix (identique à store())
+        $distanceKm = (float) $request->input('distance_km', 0);
+        if ($distanceKm <= 0 && $data['pickup_lat'] && $data['pickup_lng'] && $data['dropoff_lat'] && $data['dropoff_lng']) {
+            $distanceKm = $this->haversineDistance(
+                (float) $data['pickup_lat'], (float) $data['pickup_lng'],
+                (float) $data['dropoff_lat'], (float) $data['dropoff_lng']
+            );
+        }
+
+        $data['distance_km'] = round($distanceKm, 2);
+        $priceResult = $orderModel->calculatePrice(
+            $distanceKm, 'Douala',
+            $data['package_size'] ?? null,
+            isset($data['package_weight_kg']) ? (float) $data['package_weight_kg'] : null,
+            $data['package_value']
+        );
+
+        $isRoundTrip = (bool) $request->input('is_round_trip', false);
+        $data['is_round_trip'] = $isRoundTrip ? 1 : 0;
+        $basePrice = $priceResult['price'];
+        $roundTripSurcharge = $isRoundTrip ? (int) ceil($basePrice * 0.5) : 0;
+        $data['maps_api_cost'] = $this->calculateMapsApiCost($request->input('maps_usage', []));
+        $data['price'] = $basePrice + $roundTripSurcharge + $data['maps_api_cost'];
+        $data['currency'] = 'XAF';
+
+        // Créer la commande
+        $orderId = $orderModel->create($data);
+
+        // Gérer les articles pour commande shop
+        $itemsTotal = 0;
+        if ($orderType === 'shop' && !empty($request->input('items', []))) {
+            $orderItemModel = new OrderItem();
+            $orderItemModel->createFromCart($orderId, $request->input('items', []));
+
+            $orderItems = $orderItemModel->getByOrder($orderId);
+            foreach ($orderItems as $item) {
+                $itemsTotal += (int) $item['total_price'];
+            }
+            $orderModel->update($orderId, ['price' => $data['price'] + $itemsTotal]);
+        }
+
+        // Historique de statut
+        $historyModel = new OrderStatusHistory();
+        $historyModel->create([
+            'order_id'   => $orderId,
+            'status'     => 'pending',
+            'comment'    => 'Commande invité créée',
+            'changed_by' => null, // Pas d'utilisateur connecté
+        ]);
+
+        // Médias (non supportés pour les invités pour l'instant)
+        // TODO: Implémenter si nécessaire
+
+        $order = $orderModel->findWithDetails($orderId);
+
+        // Inclure les articles si commande shop
+        if ($orderType === 'shop') {
+            $orderItemModel = new OrderItem();
+            $order['items'] = $orderItemModel->getByOrder($orderId);
+        }
+
+        // Inclure les médias
+        $mediaModel = new OrderMedia();
+        $order['media'] = $mediaModel->getByOrder($orderId);
+
+        // Inclure les infos utilisateur
+        $order['user'] = [
+            'id'           => $user['id'],
+            'first_name'   => $user['first_name'],
+            'last_name'    => $user['last_name'],
+            'phone'        => $user['phone'],
+            'is_verified'  => $user['is_verified'],
+            'is_guest'     => true,
+        ];
+
+        Response::success($order, 'Commande invité créée', 201);
+    }
+
+    /**
      * GET /api/orders
      */
     public function index(Request $request): void
