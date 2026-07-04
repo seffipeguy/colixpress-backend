@@ -75,6 +75,9 @@ $router->put('/api/orders/{reference}', App\Controllers\OrderController::class, 
 // Guest order creation (public)
 $router->post('/api/orders/guest', App\Controllers\OrderController::class, 'guestStore');
 
+// Public price estimation
+$router->get('/api/orders/estimate-public', App\Controllers\OrderController::class, 'estimatePublic');
+
 // Order Templates (Public)
 $router->get('/api/templates/check-slug', App\Controllers\OrderTemplateController::class, 'checkSlug');
 $router->get('/api/templates/{slug}', App\Controllers\OrderTemplateController::class, 'show');

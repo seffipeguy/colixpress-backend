@@ -873,6 +873,52 @@ class OrderController extends Controller
     }
 
     /**
+     * GET /api/orders/estimate-public
+     * Public price estimation - no authentication required
+     */
+    public function estimatePublic(Request $request): void
+    {
+        $pickupLat  = (float) $request->query('pickup_lat');
+        $pickupLng  = (float) $request->query('pickup_lng');
+        $dropoffLat = (float) $request->query('dropoff_lat');
+        $dropoffLng = (float) $request->query('dropoff_lng');
+        $city       = $request->query('city', 'Douala');
+
+        if (!$pickupLat || !$pickupLng || !$dropoffLat || !$dropoffLng) {
+            Response::error('All coordinates are required', 422);
+        }
+
+        $distanceKm = (float) $request->query('distance_km', 0);
+        if ($distanceKm <= 0) {
+            $distanceKm = $this->haversineDistance($pickupLat, $pickupLng, $dropoffLat, $dropoffLng);
+        }
+        $orderModel = new Order();
+        $packageSize  = $request->query('package_size');
+        $packageWeight = $request->query('package_weight_kg') ? (float) $request->query('package_weight_kg') : null;
+        $packageValue = (int) $request->query('package_value', 0);
+        $isRoundTrip  = (bool) $request->query('is_round_trip', false);
+
+        $priceResult = $orderModel->calculatePrice($distanceKm, $city, $packageSize, $packageWeight, $packageValue);
+        $basePrice = $priceResult['price'];
+        $roundTripSurcharge = $isRoundTrip ? (int) ceil($basePrice * 0.5) : 0;
+
+        $response = [
+            'distance_km'        => round($distanceKm, 2),
+            'price'              => $basePrice + $roundTripSurcharge,
+            'base_price'         => $basePrice,
+            'is_round_trip'      => $isRoundTrip,
+            'round_trip_surcharge' => $roundTripSurcharge,
+            'currency'           => 'XAF',
+            'city'               => $city,
+        ];
+        if ($priceResult['value_surcharge'] > 0) {
+            $response['value_surcharge'] = $priceResult['value_surcharge'];
+        }
+
+        Response::success($response);
+    }
+
+    /**
      * Calculate Maps API cost based on frontend usage
      * @param array $mapsUsage ['autocomplete' => 3, 'geocode' => 2, 'directions' => 1, 'place_details' => 1]
      * @return int Total cost in XAF
