@@ -72,6 +72,9 @@ $router->get('/api/banners', App\Controllers\BannerController::class, 'index');
 $router->get('/api/tracking/{reference}', App\Controllers\OrderController::class, 'publicTracking');
 $router->put('/api/orders/{reference}', App\Controllers\OrderController::class, 'update');
 
+// Guest order creation (public)
+$router->post('/api/orders/guest', App\Controllers\OrderController::class, 'guestStore');
+
 // Order Templates (Public)
 $router->get('/api/templates/check-slug', App\Controllers\OrderTemplateController::class, 'checkSlug');
 $router->get('/api/templates/{slug}', App\Controllers\OrderTemplateController::class, 'show');
@@ -145,9 +148,6 @@ $router->group('', [Auth::class], function ($router) {
     $router->get('/api/carts/current', App\Controllers\CartController::class, 'current');
     $router->get('/api/carts/{reference}', App\Controllers\CartController::class, 'show');
     $router->post('/api/carts/{reference}/close', App\Controllers\CartController::class, 'close');
-
-    // --- Guest Orders (public) ---
-    $router->post('/api/orders/guest', App\Controllers\OrderController::class, 'guestStore');
 
     // --- Orders ---
     $router->get('/api/orders', App\Controllers\OrderController::class, 'index');
