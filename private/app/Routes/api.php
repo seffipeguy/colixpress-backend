@@ -57,6 +57,9 @@ $router->get('/api/settings/app-version', App\Controllers\SettingsController::cl
 // Maps (public)
 $router->get('/api/maps/autocomplete', App\Controllers\MapsController::class, 'autocomplete');
 $router->get('/api/maps/place-details', App\Controllers\MapsController::class, 'placeDetails');
+$router->get('/api/maps/geocode', App\Controllers\MapsController::class, 'geocode');
+$router->get('/api/maps/reverse-geocode', App\Controllers\MapsController::class, 'reverseGeocode');
+$router->get('/api/maps/directions', App\Controllers\MapsController::class, 'directions');
 
 // VAPID public key (public)
 $router->get('/api/push/vapid-public-key', App\Controllers\PushController::class, 'vapidPublicKey');
@@ -118,11 +121,6 @@ $router->group('', [Auth::class], function ($router) {
 
     // --- Auth ---
     $router->post('/api/auth/logout', App\Controllers\AuthController::class, 'logout');
-
-    // --- Maps (proxy cache Google Maps) ---
-    $router->get('/api/maps/geocode', App\Controllers\MapsController::class, 'geocode');
-    $router->get('/api/maps/reverse-geocode', App\Controllers\MapsController::class, 'reverseGeocode');
-    $router->get('/api/maps/directions', App\Controllers\MapsController::class, 'directions');
 
     // --- Pricing Calculator ---
     $router->post('/api/pricing/calculate', App\Controllers\PricingController::class, 'calculatePrice');
