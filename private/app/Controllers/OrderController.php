@@ -253,7 +253,7 @@ class OrderController extends Controller
         }
 
         // Valider les champs de base
-        $request->validate(['order_type', 'dropoff_address', 'dropoff_lat', 'dropoff_lng']);
+        $request->validate(['order_type', 'dropoff_address']);
 
         $orderModel = new Order();
         $orderType = $request->input('order_type', 'direct');
