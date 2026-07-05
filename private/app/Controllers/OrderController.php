@@ -320,7 +320,7 @@ class OrderController extends Controller
             $data['pickup_contact_name']  = $shop['name'];
             $data['pickup_contact_phone'] = $shop['phone'];
         } else {
-            $request->validate(['pickup_address', 'pickup_lat', 'pickup_lng', 'package_description', 'package_size']);
+            $request->validate(['pickup_address', 'package_description', 'package_size']);
             $data['pickup_address']       = $request->input('pickup_address');
             $data['pickup_lat']           = $request->input('pickup_lat');
             $data['pickup_lng']           = $request->input('pickup_lng');
