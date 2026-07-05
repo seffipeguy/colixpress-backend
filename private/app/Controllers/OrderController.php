@@ -291,8 +291,8 @@ class OrderController extends Controller
             'dropoff_address'      => $request->input('dropoff_address'),
             'dropoff_lat'          => $request->input('dropoff_lat'),
             'dropoff_lng'          => $request->input('dropoff_lng'),
-            'dropoff_contact_name' => $request->input('dropoff_contact_name', $firstName . ' ' . $lastName),
-            'dropoff_contact_phone'=> $request->input('dropoff_contact_phone', $phone),
+            'dropoff_contact_name' => $request->input('dropoff_contact_name') ?: $firstName . ' ' . $lastName,
+            'dropoff_contact_phone'=> $request->input('dropoff_contact_phone') ?: $phone,
             'payment_method'       => $request->input('payment_method', 'cash'),
             'payment_timing'       => $request->input('payment_timing', 'pickup'),
             'notes'                => $request->input('notes'),
@@ -320,12 +320,12 @@ class OrderController extends Controller
             $data['pickup_contact_name']  = $shop['name'];
             $data['pickup_contact_phone'] = $shop['phone'];
         } else {
-            $request->validate(['pickup_address', 'pickup_lat', 'pickup_lng', 'pickup_contact_name', 'pickup_contact_phone', 'package_description', 'package_size']);
+            $request->validate(['pickup_address', 'pickup_lat', 'pickup_lng', 'package_description', 'package_size']);
             $data['pickup_address']       = $request->input('pickup_address');
             $data['pickup_lat']           = $request->input('pickup_lat');
             $data['pickup_lng']           = $request->input('pickup_lng');
-            $data['pickup_contact_name']  = $request->input('pickup_contact_name');
-            $data['pickup_contact_phone'] = $request->input('pickup_contact_phone');
+            $data['pickup_contact_name']  = $request->input('pickup_contact_name') ?: $firstName . ' ' . $lastName;
+            $data['pickup_contact_phone'] = $request->input('pickup_contact_phone') ?: $phone;
             $data['package_description']  = $request->input('package_description', null);
             $data['package_size']         = $request->input('package_size');
             $data['package_weight_kg']    = $request->input('package_weight_kg');
