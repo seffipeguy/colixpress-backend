@@ -253,7 +253,7 @@ class OrderController extends Controller
         }
 
         // Valider les champs de base
-        $request->validate(['order_type', 'dropoff_address', 'dropoff_lat', 'dropoff_lng', 'dropoff_contact_name', 'dropoff_contact_phone']);
+        $request->validate(['order_type', 'dropoff_address', 'dropoff_lat', 'dropoff_lng']);
 
         $orderModel = new Order();
         $orderType = $request->input('order_type', 'direct');
@@ -291,8 +291,8 @@ class OrderController extends Controller
             'dropoff_address'      => $request->input('dropoff_address'),
             'dropoff_lat'          => $request->input('dropoff_lat'),
             'dropoff_lng'          => $request->input('dropoff_lng'),
-            'dropoff_contact_name' => $request->input('dropoff_contact_name'),
-            'dropoff_contact_phone'=> $request->input('dropoff_contact_phone'),
+            'dropoff_contact_name' => $request->input('dropoff_contact_name', $firstName . ' ' . $lastName),
+            'dropoff_contact_phone'=> $request->input('dropoff_contact_phone', $phone),
             'payment_method'       => $request->input('payment_method', 'cash'),
             'payment_timing'       => $request->input('payment_timing', 'pickup'),
             'notes'                => $request->input('notes'),
